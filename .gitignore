@@ -1,0 +1,23 @@
+# Python and notebook caches
+__pycache__/
+*.py[cod]
+.ipynb_checkpoints/
+.venv/
+venv/
+
+# Model weights and generated training artifacts
+*.pth
+*.pt
+*.ckpt
+*.onnx
+*.zip
+output/
+outputs/
+rtdetrv2_experiments/
+visdrone_coco/
+RT-DETR/
+
+# Local credentials
+.env
+.env.*
+!.env.example
