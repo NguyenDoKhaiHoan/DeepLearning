@@ -1,0 +1,3 @@
+# Phase 5 optional evaluator. Pin code rather than using the old upstream
+# requirements.txt, which pins NumPy 1.18 / SciPy 1.4 for older Python.
+trackeval @ git+https://github.com/JonathonLuiten/TrackEval.git@12c8791b303e0a0b50f753af204249e622d0281a

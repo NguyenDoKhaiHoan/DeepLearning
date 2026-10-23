@@ -1,0 +1,4 @@
+# Phase 0 checks require only these dependencies, not the ML stack.
+PyYAML==6.0.3
+pytest==9.0.3
+jsonschema==4.26.0

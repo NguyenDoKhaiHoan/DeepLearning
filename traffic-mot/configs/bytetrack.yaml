@@ -1,0 +1,15 @@
+schema_version: '1.0'
+backend: ultralytics
+backend_version: 8.4.171
+# Values passed unchanged to BYTETracker in Phase 2.
+tracker:
+  tracker_type: bytetrack
+  track_high_thresh: 0.25
+  track_low_thresh: 0.10
+  new_track_thresh: 0.25
+  track_buffer: 30  # Frames in pinned backend, not seconds.
+  match_thresh: 0.8  # Maximum association COST, not minimum IoU.
+  fuse_score: true
+adapter:
+  class_gating: false  # Stock backend association for E0.
+  emit_predicted_as_observed: false

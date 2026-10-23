@@ -1,0 +1,20 @@
+# Direct dependency baseline. Save a complete pip freeze for each experiment.
+# Install the matching CPU/CUDA torch + torchvision wheels first; see README.
+torch==2.6.0
+torchvision==0.21.0
+numpy==1.26.4
+scipy==1.15.3; python_version < "3.11"
+scipy==1.16.3; python_version >= "3.11"
+opencv-python==4.11.0.86
+Pillow==11.1.0
+PyYAML==6.0.3
+pandas==2.3.2
+matplotlib==3.10.8
+# Backend selected for Phase 2; no YOLO detector is used.
+ultralytics==8.4.171
+lap==0.5.12
+# Imports required by the existing official RT-DETR registry.
+faster-coco-eval==1.8.0
+pycocotools==2.0.11
+tensorboard==2.20.0
+packaging==24.2

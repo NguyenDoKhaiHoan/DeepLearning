@@ -1,0 +1,15 @@
+schema_version: '1.0'
+status: planned_not_run
+shared:
+  detector_config: detector.yaml
+  pipeline_config: pipeline.yaml
+  evaluation_config: evaluation.yaml
+  occlusion_config: occlusion.yaml
+  detection_cache: null  # Required immutable cache for comparative runs.
+  split_manifest: null
+experiments:
+  E0: {tracker_config: bytetrack.yaml, recovery_enabled: false, with_reid: false}
+  E1: {tracker_config: botsort.yaml, recovery_enabled: false, with_reid: false}
+  E2: {tracker_config: bytetrack.yaml, recovery_enabled: true, with_reid: false}
+  E3: {tracker_config: botsort.yaml, recovery_enabled: true, with_reid: false}
+component_ablations: [retention_only, reassociation_only, retention_and_reassociation]

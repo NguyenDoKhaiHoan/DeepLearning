@@ -1,0 +1,43 @@
+schema_version: '1.0'
+backend: rtdetrv2_p2
+# Resolve paths relative to traffic-mot/, never relative to the shell CWD.
+assets:
+  repo: ../RT-DETR/rtdetrv2_pytorch
+  model_config: ../artifacts/E1_p2_final/demo_config.yml
+  checkpoint: ../artifacts/E1_p2_final/best.pth
+  label_map: ../artifacts/E1_p2_final/label_map.json
+  classes: ../artifacts/E1_p2_final/classes.txt
+  bundle_manifest: ../artifacts/E1_p2_final/bundle_manifest.json
+  repo_commit: 29320b6fd828f8e0987a71426cf2d961b09dfed7
+weights: ema
+strict_load: true
+device: cpu
+precision: fp32   # AMP: CUDA only, after numerical validation in Phase 1.
+batch_size: 1
+confidence_threshold: 0.10  # Preserve low-score detections for ByteTrack.
+preprocessing:
+  input_size: [640, 640]  # height, width
+  color: RGB
+  source_color: BGR
+  resize: stretch
+  scale: 0.00392156862745098
+  mean: null
+  std: null
+  original_size_order: [width, height]
+  transforms: from_model_validation_config
+class_mapping:
+  classifier_slots: 11
+  drop_model_ids: [0]
+  model_id_to_name:
+    1: pedestrian
+    2: people
+    3: bicycle
+    4: car
+    5: van
+    6: truck
+    7: tricycle
+    8: awning-tricycle
+    9: bus
+    10: motor
+  vehicle_model_ids: [3, 4, 5, 6, 7, 8, 9, 10]
+  preserve_model_ids: true

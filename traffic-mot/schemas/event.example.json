@@ -1,0 +1,20 @@
+{
+  "schema_version": "1.0.0",
+  "event_id": "3771e12b-c62c-5cbe-880e-88ed52e78ae4",
+  "camera_id": "cam_01",
+  "session_id": "session_001",
+  "track_id": 42,
+  "event_type": "line_crossing",
+  "rule_id": "count_main",
+  "vehicle_type": "car",
+  "timestamp_ms": 15200,
+  "start_timestamp_ms": 15200,
+  "end_timestamp_ms": 15200,
+  "duration_ms": 0,
+  "frame_id": 381,
+  "start_frame_id": 381,
+  "time_basis": "frame_fps",
+  "video_source": "traffic_01.mp4",
+  "confidence": 0.93,
+  "attributes": {"direction": "positive"}
+}

@@ -1,0 +1,149 @@
+# Lộ trình ưu tiên hoàn thiện đề tài Computer Vision
+
+Cập nhật 23/10/2026. Mục tiêu: **Phát hiện và theo dõi đa đối tượng dưới điều kiện
+che khuất trong video giao thông**. Hoàn thiện và nghiệm thu đề tài này trước
+Đồ án3. Không phát triển frontend, web backend, Kafka, Flink hoặc database ở đây.
+Giữ nguyên web demo, train workflow, checkpoint và module cũ đang hoạt động.
+
+## Trạng thái thực tế và bằng chứng
+
+| Hạng mục | Bằng chứng | Trạng thái |
+|---|---|---|
+| Phase0: audit/design/config/schema | PHASE_0_REPORT, asset validator, 22 tests lịch sử | đã kiểm chứng local |
+| RT-DETRv2-P2 | SHA256 bundle, EMA epoch119 strict load, source pin | có thật/load được |
+| Detection/VideoReader/MP4/JSONL | 48 frame giao thông thật CPU, video đọc lại được | local có bằng chứng; xem PHASE_1_REPORT |
+| Kaggle detection | notebook01 dùng source chung + preflight GPU/assets/video | chuẩn bị; chưa chạy Kaggle |
+| ByteTrackLite/MOT-lite cũ | tests legacy, greedy association/approximate metrics | giữ nguyên; không phải baseline chuẩn |
+| ByteTrack/BoT-SORT chuẩn | YAML và thiết kế | chưa triển khai/chạy |
+| MOT evaluation/OAR/ablation | protocol và notebook templates | chưa triển khai/chạy |
+| Trajectory/events/final benchmark | schema/thiết kế | chưa triển khai/chạy |
+
+Folder/notebook được tạo không chứng minh thuật toán đã chạy. Trạng thái hiện tại
+ở [STATUS](STATUS.md); lịch sử Phase0 giữ nguyên. Các số Phase1–6 trong thiết kế
+ban đầu là nhóm module cũ; **thứ tự có hiệu lực là bảy bước dưới đây**.
+
+## 1. Detection integration và Kaggle inference — bước đang hoàn thiện
+
+Dùng BaseDetector, MockDetector fixture rõ ràng, RTDETRv2P2Detector, VideoReader,
+renderer và CLI mới; tái sử dụng model/config/transforms chính thức. EMA strict,
+BGR→RGB, resize640/float32/255, postprocessor [W,H], original IDs3–10, cutoff0.10.
+Không thêm NMS hoặc đổi preprocessing giữa run. Display cutoff độc lập JSONL.
+
+**Lệnh local đã triển khai, từ repository root:**
+
+```powershell
+python traffic-mot/scripts/validate_phase0.py --check-assets
+python -m pytest -c traffic-mot/pyproject.toml traffic-mot/tests --run-model -q
+python traffic-mot/scripts/run_video.py --source outputs/web_demo/0315259f-8088-44c9-8c3c-129efe920d21/input.mp4 --device cpu --max-frames 48 --save-video --save-json --output-dir traffic-mot/outputs/your_new_run
+```
+
+Kaggle: `../../notebooks/kaggle/01_detection_inference.ipynb`, mount bundle/video
+thật, checkout RT-DETR đúng commit và chọn GPU. Notebook gọi source repository.
+
+**Đầu ra:** resolved detector profile/hash, manifest, detections.jsonl,
+annotated.mp4, evidence đọc lại. Mock có flag/watermark, không dùng báo cáo.
+**Gate:** negative/unit/real model tests đạt; class/confidence/box/time đúng;
+thiếu asset phải lỗi, không fallback mock; có artifact notebook01 chạy thật GPU.
+**Kết quả hiện có:** local smoke; Kaggle GPU pending, không coi CPU là gate GPU.
+
+## 2. ByteTrack / BoT-SORT baseline
+
+Dùng tracker implementation `ultralytics==8.4.171`, bridge DetectionBatch vào
+backend; không thay detector bằng YOLO, không đổi tên ByteTrackLite thành chuẩn.
+Kalman/high-low association/lifecycle dùng backend đã pin; ReID off, GMC tường
+minh. Cùng detection cache có hash cho E0/E1; OAR off.
+
+**Files:** tracking/{base,bytetrack,botsort,backend_bridge}.py và CLI tracker trong
+run_video.py; orchestration `run_mot_baselines.py` cho notebook02.
+**CLI dự kiến, chưa chạy được:** `python scripts/run_video.py --source <video>
+--tracker bytetrack --tracker-config configs/bytetrack.yaml ...`, tương tự botsort.
+**Đầu ra:** tracks.jsonl, MOT predictions+class sidecar, ID video, provenance.
+**Gate:** empty/high/low/lost/remove tests, no birth từ low, đúng buffer; ID không
+reset/lẫn session; off bằng backend gốc; collision/class-switch/GMC tests;
+video thật đọc lại. **Hiện tại:** chưa có implementation hoặc kết quả chuẩn.
+
+## 3. Kaggle MOT baseline evaluation — bắt buộc trước cải tiến
+
+Cần VisDrone MOT đúng release với persistent IDs, ignore/occlusion; split theo
+sequence/camera. Không dùng VisDrone-DET làm tracking GT. Xác nhận scope class
+(khởi đầu vehicle4/5/6/9) trước khi đóng băng. Tạo VisDroneMOTAdapter cho TrackEval
+multi-class/ignore, không đưa car vào reader MOTChallenge pedestrian mặc định.
+
+**CLI dự kiến:** `python scripts/run_mot_baselines.py --detector-config <resolved>
+--manifest <mot_split_manifest.json> --split validation --output-root <new_dir>`.
+Notebook02 gọi CLI chung; CLI orchestration tracking và evaluate_mot.py.
+**Đầu ra:** E0/E1 predictions/cache, raw TrackEval JSON, HOTA/IDF1/MOTA/IDSW/MT/ML,
+GT counts, ignore diagnostics, split/hash/environment và failure clips.
+**Gate:** perfect/missing/FP/ID-switch/fragment/class/ignore/empty fixtures,
+đối chiếu trực tiếp toolkit, timeline không bị zip cắt; validation Kaggle chạy
+thật với E0/E1 cùng cache/precision/frame order. Thiếu GT → N/A, không số giả.
+**Hiện tại:** chưa có dataset MOT, runner hoặc run; không nhảy qua bước này.
+
+## 4. Occlusion-Aware Tracking improvement
+
+Sau baseline đo được, triển khai overlap/history evidence, phân biệt
+suspected_exit/unknown/occluded, adaptive retention bounded và Kalman-gated
+unmatched reassociation. GT chỉ dùng offline. ReID chỉ khi có extractor thật
+được kiểm chứng domain vehicle; không nhận diện tính năng qua tên config.
+
+**Files:** occlusion/{evidence,retention,recovery,state}.py và backend extension
+có version/diff; hooks sau stock association, trước removal và birth.
+**CLI dự kiến:** run_video thêm `--occlusion-config configs/occlusion.yaml`,
+override enabled được ghi resolved config; baseline off giữ hành vi.
+**Đầu ra:** E2/E3 predictions, recovery evidence/decision, public ID map/overhead.
+**Gate:** một predict/update mỗi frame, không cướp active match, one-to-one,
+ambiguity từ chối, exit/timeout/covariance/crowd/camera-motion/dropout tests;
+mock chỉ chứng minh invariant. **Hiện tại:** thiết kế, chưa có kết quả recovery.
+
+## 5. Kaggle ablation experiments
+
+Notebook03 dùng run_ablation.py chạy E0–E3, retention-only, reassociation-only,
+kết hợp. Tune **validation** với cùng budget/cache/GT episodes/hardware;
+test giữ nguyên, chưa dùng để chọn threshold. E3 chỉ làm khi BoT-SORT hook đạt gate.
+
+**CLI dự kiến:** `python scripts/run_ablation.py --config configs/experiments.yaml
+--detector-config <resolved> --manifest <manifest> --split validation --output-root <dir>`.
+**Đầu ra:** per-sequence/class metrics, occlusion/size sau full-GT matching,
+recovery success với mẫu số GT cố định, sequence-paired CI, overhead và
+selected_config.yaml có hash/protocol selection được freeze.
+**Gate:** thực nghiệm thật tái lập được, không tune test, không rematch chỉ heavy
+GT; giữ cả kết quả xấu. **Hiện tại:** notebook template/guard; runner chưa có.
+
+## 6. Trajectory và Traffic Event Detection
+
+Sau khi identity được đánh giá, bổ sung bounded history, smoothing/displacement/
+direction pixel; line crossing, region entry/exit, count, wrong-way, stationary.
+Tái sử dụng track stream, YAML/schema. Không chuyển thành phát triển Đồ án3.
+
+**CLI dự kiến:** run_video thêm event/trajectory configs; export_events.py hỗ trợ
+JSONL→JSON/CSV, stable event_id và source/time range.
+**Đầu ra:** trajectories.jsonl, events.jsonl/CSV, ROI/line/event video overlays.
+**Gate:** hysteresis/jitter/finite line/ROI dwell, recovered ID không đếm trùng,
+namespace camera/session, gap không tạo event giả, interval/confidence semantic
+validation. Không pixel→km/h thiếu calibration. **Hiện tại:** chưa có engine/run.
+
+## 7. Final evaluation, benchmarking và video demo
+
+Notebook04 chạy final_evaluation.py trên heldout **test**, chỉ sau validation
+freeze; không search tham số. HOTA/IDF1/MOTA/IDSW và occlusion/recovery/size cần GT
+thật. FPS cần đo thật, tách detector/tracking/recovery/pipeline, warmup/CUDA sync,
+batch/precision/encode/measured frames. Cache FPS không phải pipeline FPS.
+
+**CLI dự kiến:** `python scripts/final_evaluation.py --config <frozen_config>
+--detector-config <resolved> --manifest <manifest> --split test --output-root <dir>`.
+**Đầu ra:** final raw/results tables, timings, video demo có nguồn thật, failure
+analysis và reproducibility bundle. **Gate:** regression+clean-install+Kaggle
+rerun, config/data hash, disjoint splits và đủ artifact; lúc đó mới nghiệm thu CV.
+**Hiện tại:** chưa triển khai; template04 dừng khi thiếu frozen config/CLI.
+
+## Cần bổ sung và giới hạn đợt triển khai này
+
+Local đã có checkpoint/config/source. Kaggle cần mount đúng bundle và video,
+checkout source pin, bật GPU rồi lưu artifact notebook01. Máy local hiện không
+có CUDA. Chưa có dataset MOT/persistent IDs/occlusion/ignore và disjoint split
+manifest trong dữ liệu dự án. Source checker chỉ chặn duplicate sequence/path/hash;
+nguồn camera/các clip cắt cùng video còn phải được dataset audit xác nhận.
+
+Đợt này chỉ hoàn thiện bước chưa xong đầu tiên: detection integration và phần
+Kaggle inference dùng chung source; chuẩn bị template02–04 có preflight/guard.
+Không triển khai bước2–7 hoặc công bố chúng hoàn thành khi chưa có bằng chứng.

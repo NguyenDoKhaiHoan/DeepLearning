@@ -1,0 +1,26 @@
+schema_version: '1.0'
+# Design template for Phase 3; these parameters are hypotheses, not results.
+enabled: false
+evidence:
+  overlap_ioa_threshold: 0.50
+  history_frames: 5
+  min_overlap_frames: 2
+  exit_border_fraction: 0.03
+  exit_outward_motion_required: true
+retention:
+  adaptive: true
+  base_frames: 30
+  max_frames: 90
+  max_gap_ms: 3000
+reassociation:
+  enabled: true
+  class_gate: true
+  min_hits: 3
+  min_detection_confidence: 0.25
+  mahalanobis_squared_gate: 9.4877  # 4D chi-square 95%, before assignment.
+  min_predicted_iou: 0.10
+  ambiguity_margin: 0.15
+  use_appearance: false
+  max_candidates: 64
+output:
+  emit_unobserved_as_detection: false

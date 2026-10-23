@@ -1,0 +1,27 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Traffic MOT event v1.0.0",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "event_id", "camera_id", "session_id", "track_id", "event_type", "rule_id", "vehicle_type", "timestamp_ms", "start_timestamp_ms", "end_timestamp_ms", "duration_ms", "frame_id", "start_frame_id", "time_basis", "video_source", "confidence", "attributes"],
+  "properties": {
+    "schema_version": {"const": "1.0.0"},
+    "event_id": {"type": "string", "format": "uuid"},
+    "camera_id": {"type": "string", "minLength": 1},
+    "session_id": {"type": "string", "minLength": 1},
+    "track_id": {"type": "integer", "minimum": 1},
+    "event_type": {"enum": ["line_crossing", "region_entry", "region_exit", "vehicle_count", "wrong_way", "stationary_vehicle"]},
+    "rule_id": {"type": "string", "minLength": 1},
+    "vehicle_type": {"enum": ["bicycle", "car", "van", "truck", "tricycle", "awning-tricycle", "bus", "motor"]},
+    "timestamp_ms": {"type": "integer", "minimum": 0},
+    "start_timestamp_ms": {"type": "integer", "minimum": 0},
+    "end_timestamp_ms": {"type": "integer", "minimum": 0},
+    "duration_ms": {"type": "integer", "minimum": 0},
+    "frame_id": {"type": "integer", "minimum": 1},
+    "start_frame_id": {"type": "integer", "minimum": 1},
+    "time_basis": {"enum": ["media_pts", "frame_fps", "monotonic_session"]},
+    "video_source": {"type": "string", "minLength": 1},
+    "confidence": {"type": "number", "minimum": 0, "maximum": 1},
+    "attributes": {"type": "object"}
+  }
+}

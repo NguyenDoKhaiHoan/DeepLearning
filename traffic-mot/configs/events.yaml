@@ -1,0 +1,29 @@
+schema_version: '1.0'
+# Coordinates normalized to [0,1], scaled to original frame dimensions.
+coordinate_space: normalized
+point: bbox_bottom_center
+confirmed_observations_only: true
+deduplication: track_rule_direction_episode
+rules:
+  - id: count_main
+    type: line_crossing
+    points: [[0.10, 0.60], [0.90, 0.60]]
+    direction: both
+    hysteresis_px: 3
+    count_once_per_track_direction: true
+  - id: intersection
+    type: region_transition
+    polygon: [[0.20, 0.20], [0.80, 0.20], [0.80, 0.85], [0.20, 0.85]]
+    emit: [region_entry, region_exit]
+    min_dwell_ms: 300
+  - id: lane_direction
+    type: wrong_way
+    expected_vector: [0, 1]
+    min_displacement_px: 30
+    angle_threshold_degrees: 120
+    min_duration_ms: 1000
+  - id: stopped_vehicle
+    type: stationary
+    max_radius_px: 5
+    min_duration_ms: 5000
+    max_observation_gap_ms: 500

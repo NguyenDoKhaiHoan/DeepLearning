@@ -1,0 +1,24 @@
+schema_version: '1.0'
+backend: ultralytics
+backend_version: 8.4.171
+tracker:
+  tracker_type: botsort
+  track_high_thresh: 0.25
+  track_low_thresh: 0.10
+  new_track_thresh: 0.25
+  track_buffer: 30
+  match_thresh: 0.8
+  fuse_score: true
+  gmc_method: sparseOptFlow
+  proximity_thresh: 0.5
+  appearance_thresh: 0.8
+  with_reid: false
+  model: null  # No extractor integrated. Do not enable 'auto' for RT-DETR.
+adapter:
+  class_gating: false
+  emit_predicted_as_observed: false
+reid:
+  status: not_integrated
+  domain: null
+  checkpoint_sha256: null
+  embedding_dimension: null

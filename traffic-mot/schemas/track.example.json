@@ -1,0 +1,18 @@
+{
+  "schema_version": "1.0.0",
+  "camera_id": "cam_01",
+  "session_id": "session_001",
+  "frame_id": 126,
+  "track_id": 42,
+  "class_id": 4,
+  "class_name": "car",
+  "bbox": [120, 80, 220, 170],
+  "confidence": 0.93,
+  "track_state": "tracked",
+  "observed": true,
+  "timestamp_ms": 5000,
+  "time_basis": "frame_fps",
+  "video_source": "traffic_01.mp4",
+  "occlusion_state": "visible",
+  "recovered": false
+}

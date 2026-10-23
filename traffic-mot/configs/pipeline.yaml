@@ -1,0 +1,34 @@
+schema_version: '1.0'
+camera_id: cam_01
+session_id: auto_uuid  # Runtime generates a new session on discontinuity/restart.
+source: null
+seed: 42
+input:
+  frame_id_origin: 1
+  clock: media_pts
+  fallback_fps: null  # Require explicit FPS if media timing cannot be recovered.
+  live_clock: monotonic_session
+  rtsp_reconnect_attempts: 3
+  frame_stride: 1
+  queue_policy: block  # Offline baseline: never silently drop frames.
+trajectory:
+  max_history_points: 120
+  smoothing_alpha: 0.6
+  units: pixels
+output:
+  root: outputs
+  save_video: false
+  metadata_format: jsonl
+  observed_tracks_only_for_mot: true
+  headless: true
+  codec: mp4v
+visualization:
+  boxes: true
+  track_ids: true
+  classes: true
+  confidence: true
+  trajectories: true
+  rois: true
+  lines: true
+  events: true
+  fps: true
