@@ -22,7 +22,7 @@ def test_gpu_is_required_without_silent_cpu_fallback(monkeypatch):
 
 def test_unimplemented_stage_stops_instead_of_generating_scores():
     with pytest.raises(ConfigurationError, match="Stage not implemented"):
-        run_stage(ROOT, "final_evaluation.py", [])
+        run_stage(ROOT, "not_an_implemented_stage.py", [])
 
 
 @pytest.fixture

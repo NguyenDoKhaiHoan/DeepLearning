@@ -14,7 +14,7 @@ thiếu theo IMPLEMENTATION_PLAN, không dùng tên phase/folder làm chứng c�
 | 4 OAR | implemented + controlled invariant tests + real48-frame smoke | bounded retention, gated reassociation; chưa có improvement evidence |
 | 5 Kaggle ablation | runner E0–E3 + components, real CPU cache replay đạt | full Kaggle validation/frozen config còn pending |
 | 6 Trajectory/events | schema/config thiết kế | chưa engine/run |
-| 7 Final eval/benchmark/demo | template | chưa frozen config/test run/benchmark |
+| 7 Final eval/benchmark/demo | runner+freeze gate+core benchmark implemented/tested | local validation component smoke thật; full validation freeze/Kaggle test pending |
 
 Checkpoint P2 best.pth thực có, SHA256 khớp manifest; EMA119 load strict được.
 Source RT-DETR đúng commit và sạch. Máy local torch CPU, CUDA unavailable.
@@ -37,4 +37,8 @@ baseline đầy đủ. Để sửa lỗi missing run_ablation.py, đã thêm OAR
 smoke eight variants trên cùng cache. E0/E1 tái tính khớp; E2/E3 HOTA/IDF1 giảm
 nhẹ trong đoạn48 frame, không công bố improvement. Xem OAR_ABLATION_REPORT.
 Notebook03 có smoke/reference/full modes; chỉ full validation mới freeze.
-Notebook04 vẫn template có guard; không tự suy Kaggle ablation đã thành công.
+Notebook04 đã có final runner và resolver đúng ablation folder. 135 tests đạt;
+validation core smoke48 frame và benchmark8+8 model thật đã chạy, không báo
+thành test score. Candidate local bị chặn đúng trước GT test; chưa có full frozen
+config local nên final held-out execution vẫn pending. FINAL_EVALUATION_REPORT
+phân biệt rõ code readiness và bằng chứng run; không tự suy Kaggle ablation đã đạt.

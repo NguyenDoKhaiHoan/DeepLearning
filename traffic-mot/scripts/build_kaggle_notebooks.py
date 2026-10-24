@@ -43,7 +43,7 @@ if not MOT_MANIFEST.exists():
     prepare_mot_manifest(MOT_MANIFEST, root=MOT_DATA_ROOT)
 print("MOT_MANIFEST:", MOT_MANIFEST)
 # Preparation lists frame/GT members without parsing held-out test annotations.
-# Input preparation only; the final-test runner in notebook04 remains pending.
+# Input preparation only; final test additionally requires the frozen validation artifact.
 ''')
     preflight = code('''config_path, preflight_report = prepare_detection_config(
     PROJECT_ROOT, BUNDLE_DIR, UPSTREAM_REPO, OUTPUT_ROOT / "configs",
@@ -156,16 +156,38 @@ print("Outputs:", ABLATION_RUN)
 # No test tuning. A prefix smoke never freezes selected_config.yaml for notebook04.
 ''')]),
         ("04_final_benchmark.ipynb", "04 — Frozen held-out evaluation / benchmark / demo",
-         "Prepared template; run only after validation selection is frozen. No test-driven tuning.",
-         [code('''print(check_mot_dataset(MOT_MANIFEST, split="test"))
-FROZEN_CONFIG = OUTPUT_ROOT / "ablation/selected_config.yaml"
-assert FROZEN_CONFIG.is_file(), "Finish validation ablations and freeze the selected configuration first"
-'''), code('''run_stage(PROJECT_ROOT, "final_evaluation.py", [
-    "--config", str(FROZEN_CONFIG), "--detector-config", str(config_path),
+         "Implemented frozen-config test evaluation and real core benchmark. Requires a completed full-validation selection; Kaggle test execution evidence pending.",
+         [markdown('''## Select the actual preceding validation run
+
+Notebook03 writes into ablation_<uuid>, not necessarily a folder named ablation.
+Set ABLATION_RUN below to that directory when running in a fresh kernel, or the
+helper uses the existing notebook03 variable/unique frozen selection.
+Smoke candidate_config.yaml cannot be renamed into a final configuration: source
+manifest, full validation counts, selection checksum and tracker/model profiles
+are verified before test GT or inference. No thresholds are tuned on test.
+'''), code('''from traffic_mot.evaluation.final import resolve_frozen_config
+# Fresh kernel example (replace with your completed FULL validation run):
+# ABLATION_RUN = OUTPUT_ROOT / "ablation_<uuid>"
+FROZEN_CONFIG = resolve_frozen_config(OUTPUT_ROOT, globals().get("ABLATION_RUN"))
+CONFIG_PATH = Path(globals().get("CONFIG_PATH", config_path))
+assert CONFIG_PATH.is_file(), f"Missing detector config: {CONFIG_PATH}"
+print("Frozen validation config:", FROZEN_CONFIG)
+# No test GT is read until the final runner validates the freeze artifact.
+'''), code('''from uuid import uuid4
+import json
+FINAL_RUN = OUTPUT_ROOT / ("final_" + uuid4().hex)
+arguments = [
+    "--config", str(FROZEN_CONFIG), "--detector-config", str(CONFIG_PATH),
     "--manifest", str(MOT_MANIFEST), "--split", "test",
-    "--output-root", str(OUTPUT_ROOT / "final")])
-# Planned: actual HOTA/IDF1/MOTA/IDSW, observed runtime components/FPS,
-# recovery/size/occlusion tables and annotated demo clips. No placeholder scores.
+    "--output-root", str(FINAL_RUN), "--benchmark-frames", "100"]
+# Optional demo playback (display-only FPS, not camera/processing FPS):
+# arguments += ["--save-video", "--visualization-fps", "10"]
+run_stage(PROJECT_ROOT, "final_evaluation.py", arguments)
+result = json.loads((FINAL_RUN / "final_summary.json").read_text())
+print(result)
+print("DONE. Outputs:", FINAL_RUN)
+# Benchmark measures actual decode+detector+tracking/OAR after warmup.
+# Rendering/encoding/export are excluded; cached replay is never reported as core FPS.
 ''')]),
     ]
     for name, title, status, cells in specs:

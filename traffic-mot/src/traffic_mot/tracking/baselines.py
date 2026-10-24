@@ -111,7 +111,7 @@ def _draw(frame: np.ndarray, tracks: list) -> np.ndarray:
     return output
 
 
-def run_baselines(project_root: Path, detector_config: Path, manifest_path: Path, output: Path, *,
+def _run_tracking_experiments(project_root: Path, detector_config: Path, manifest_path: Path, output: Path, *,
                   split: str = "validation", sequence_names: list[str] | None = None,
                   max_frames: int | None = None, cache_root: Path | None = None,
                   tracker_configs: dict[str, Path] | None = None,
@@ -119,12 +119,8 @@ def run_baselines(project_root: Path, detector_config: Path, manifest_path: Path
                   save_video: bool = False, visualization_fps: float | None = None,
                   experiment_profiles: dict[str, dict] | None = None,
                   include_diagnostics: bool = False) -> dict:
-    """Run standard MOT baselines; GT is read for scoring only after tracking.
-
-    This entrypoint intentionally accepts validation only. Held-out evaluation
-    belongs to a later frozen-configuration runner, not baseline tuning.
-    """
-    require(split == "validation", "Baseline runner uses validation only; test is reserved for frozen final evaluation")
+    """Shared execution engine; public tuning/final wrappers enforce split gates."""
+    require(split in {"validation", "test"}, "Unknown evaluation split")
     require(max_frames is None or max_frames > 0, "max_frames must be positive")
     require(not save_video or (visualization_fps is not None and np.isfinite(visualization_fps) and visualization_fps > 0),
             "Native images have no known FPS: --save-video requires explicit --visualization-fps (display only)")
@@ -158,7 +154,7 @@ def run_baselines(project_root: Path, detector_config: Path, manifest_path: Path
     selected = manifest[split]
     if sequence_names:
         require(len(set(sequence_names)) == len(sequence_names), "Duplicate --sequence argument")
-        require(set(sequence_names) <= {s["name"] for s in selected}, "Requested sequence is outside validation manifest")
+        require(set(sequence_names) <= {s["name"] for s in selected}, "Requested sequence is outside the requested split")
         selected = [s for s in selected if s["name"] in sequence_names]
     require(bool(selected), "No selected MOT sequences")
     require(all(s.get("source_kind") in {"images_zip", "images_dir"} and Path(s["name"]).name == s["name"]
@@ -301,3 +297,10 @@ def run_baselines(project_root: Path, detector_config: Path, manifest_path: Path
         run.update(elapsed_seconds=time.perf_counter() - start, ended_at=datetime.now(timezone.utc).isoformat())
         _save(output / "manifest.json", run)
     return run
+
+
+def run_baselines(project_root: Path, detector_config: Path, manifest_path: Path, output: Path, *,
+                  split: str = "validation", **kwargs) -> dict:
+    """Public baseline/ablation entrypoint: tuning never evaluates held-out test."""
+    require(split == "validation", "Baseline runner uses validation only; test is reserved for frozen final evaluation")
+    return _run_tracking_experiments(project_root, detector_config, manifest_path, output, split=split, **kwargs)

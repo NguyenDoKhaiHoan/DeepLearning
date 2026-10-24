@@ -84,7 +84,8 @@ Kết quả và lệnh smoke thực tế: [PHASE_1_REPORT](docs/PHASE_1_REPORT.m
 Xem [notebooks/kaggle](../notebooks/kaggle/README.md). Notebook01 dùng cùng adapter
 và pipeline; notebook02 đã có CLI E0/E1 và TrackEval, mặc định smoke trước khi
 chạy full validation. Notebook03 đã có OAR/component ablation runner dùng cùng
-source/cache; notebook04 vẫn thiếu final runner. Không có notebook nào được tuyên bố đã chạy GPU
+source/cache; notebook04 đã có frozen-config test runner và core benchmark.
+Không có notebook nào được tuyên bố đã chạy GPU
 Kaggle trong session hiện tại. Thiếu MOT dataset/GT thì HOTA/IDF1/MOTA/IDSW là N/A.
 Chỉ tune validation; test giữ cho đánh giá cấu hình đã freeze.
 
@@ -150,6 +151,43 @@ mới ghi `selected_config.yaml`, chọn HOTA→IDF1→ít IDSW, baseline thắn
 không tự ưu tiên OAR nếu metrics xấu. [OAR report](docs/OAR_ABLATION_REPORT.md)
 ghi kết quả thật48-frame hiện có: OAR không cải thiện HOTA/IDF1 trên đoạn này.
 Full Kaggle validation, OAR tuning và final-test evidence còn pending.
+
+## Final evaluation sau full validation
+
+`scripts/final_evaluation.py` đã nhận đúng config/detector-config/manifest/split/
+output-root của notebook04. Chọn **đúng run ablation** để tìm selected_config:
+
+```python
+from traffic_mot.evaluation.final import resolve_frozen_config
+FROZEN_CONFIG = resolve_frozen_config(OUTPUT_ROOT, globals().get("ABLATION_RUN"))
+```
+
+Trong kernel mới, đặt ABLATION_RUN trỏ full-validation folder hoặc để helper tìm
+unique ablation/ablation_<uuid> có selected_config.yaml. Không chọn run tùy ý khi
+có nhiều file. Smoke candidate_config không được rename để bypass freeze.
+Giữ cả thư mục ablation với manifest/selection/config snapshots để kiểm provenance.
+
+```powershell
+python traffic-mot/scripts/final_evaluation.py --config <ablation_run/selected_config.yaml> --detector-config <same_detector_profile.yaml> --manifest <same_native_manifest.json> --split test --output-root <new_final_directory>
+```
+
+Runner kiểm full-validation frame counts, selection/model/config/code/data hashes,
+winner rule và profiles trước đọc GT test. Chỉ chạy selected E0/E1/E2/E3; không
+search tham số hay chọn lại winner trên test. Baseline/ablation CLI vẫn chỉ nhận
+validation. Có --check-only để kiểm freeze/assets mà không infer hoặc mở test GT.
+
+Mặc định benchmark100 frame sau warmup từ frozen evaluation profile, chạy detector
+thật không cache, đo decode/detector/tracking và core total p50/p95/p99 + FPS.
+Scope không gồm render/encode/export, không gọi là toàn bộ video-output throughput.
+`--benchmark-frames 0` tắt benchmark nếu chỉ cần metrics; smoke test prefix ngắn
+cần đủ frame sau warmup hoặc tắt benchmark. Optional video dùng playback FPS tường minh.
+Output final_summary.json, freeze_verification.json, selected_config.yaml snapshot,
+experiment metrics/diagnostics/predictions, benchmark.json/timings CSV khi bật.
+
+[Final runner verification](docs/FINAL_EVALUATION_REPORT.md): tests freeze/workflow
+và real-model validation component smoke đạt; chưa có local full-validation
+selection nên chưa chạy/test-report held-out score thật. Kaggle final evidence
+chỉ được công bố sau khi chạy đoạn code với artifact đủ điều kiện.
 
 ## Tài liệu thiết kế
 

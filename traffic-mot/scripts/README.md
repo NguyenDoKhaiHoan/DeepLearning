@@ -12,6 +12,7 @@ real detector không fallback mock.
 | prepare_mot_dataset.py | tạo manifest native JPG sequences từ val/test-dev ZIP hoặc directory; preflight selected GT |
 | run_mot_baselines.py | validation E0/E1 từ cùng cache detector thật, native JPG/ZIP, official TrackEval metrics |
 | run_ablation.py | validation E0–E3 + hai component ablations mỗi backend; OAR/inference tách GT diagnostics |
+| final_evaluation.py | verify full-validation freeze, chạy duy nhất selected config trên test và core benchmark thật |
 
 ```powershell
 python traffic-mot/scripts/run_video.py --help
@@ -37,6 +38,14 @@ thì runner tự recompute E0/E1; smoke có thể chọn sequence/max-frames. Fu
 freeze, không test tuning. Source chung trong tracking.baselines, không copy
 thuật toán trong script/notebook. Baseline E0/E1 recovery=false như trước.
 
+```powershell
+python traffic-mot/scripts/final_evaluation.py --config <full_ablation/selected_config.yaml> --detector-config <same_profile.yaml> --manifest <native_manifest.json> --split test --output-root <new_directory>
+```
+
+--check-only xác minh freeze/assets không đọc test GT; benchmark mặc định100 frame
+sau warmup, tắt bằng `--benchmark-frames 0`. Prefix subset bằng sequence/max-frames
+được ghi smoke_test=true; vẫn bắt buộc freeze từ full validation. Rerun luôn chọn
+output directory mới. source ablation/selection/manifest phải đi cùng frozen YAML.
+
 CLI chưa có: standalone evaluate_mot.py (metric nằm trong shared runner),
-export_events.py (bước6), final_evaluation.py/benchmark.py (bước7). Notebook04 vẫn
-có guard chống chạy entrypoint chưa tồn tại.
+export_events.py (bước6), standalone benchmark.py (benchmark đã tích hợp final CLI).

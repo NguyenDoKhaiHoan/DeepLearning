@@ -18,7 +18,8 @@ Giữ nguyên web demo, train workflow, checkpoint và module cũ đang hoạt �
 | MOT data preparation | native ZIP/image manifest + validation preflight trên dữ liệu thật | local đạt, chưa metric |
 | MOT baseline evaluation | official TrackEval + multi-class ignore protocol | real CPU prefix verified, chưa toàn split |
 | OAR/ablation | versioned policy + runner/common cache + real48-frame CPU study8 variants | local smoke đã chạy; improvement/full Kaggle pending |
-| Trajectory/events/final benchmark | schema/thiết kế | chưa triển khai/chạy |
+| Trajectory/events | schema/thiết kế | chưa engine/run |
+| Final test/benchmark | CLI+freeze verifier+runtime measurement | tests + real validation component smoke; test run pending |
 
 Folder/notebook được tạo không chứng minh thuật toán đã chạy. Trạng thái hiện tại
 ở [STATUS](STATUS.md); lịch sử Phase0 giữ nguyên. Các số Phase1–6 trong thiết kế
@@ -146,12 +147,18 @@ freeze; không search tham số. HOTA/IDF1/MOTA/IDSW và occlusion/recovery/size
 thật. FPS cần đo thật, tách detector/tracking/recovery/pipeline, warmup/CUDA sync,
 batch/precision/encode/measured frames. Cache FPS không phải pipeline FPS.
 
-**CLI dự kiến:** `python scripts/final_evaluation.py --config <frozen_config>
+**CLI thực:** `python scripts/final_evaluation.py --config <frozen_config>
 --detector-config <resolved> --manifest <manifest> --split test --output-root <dir>`.
 **Đầu ra:** final raw/results tables, timings, video demo có nguồn thật, failure
 analysis và reproducibility bundle. **Gate:** regression+clean-install+Kaggle
 rerun, config/data hash, disjoint splits và đủ artifact; lúc đó mới nghiệm thu CV.
-**Hiện tại:** chưa triển khai; template04 dừng khi thiếu frozen config/CLI.
+**Hiện tại:** implemented/tested freeze gate (source validation artifact/hash,
+full frame coverage, model/tracker/OAR/eval profiles, winner rule). Notebook04
+tìm đúng ABLATION_RUN hoặc unique freeze; không đổi candidate smoke thành final.
+Shared tracking engine tái sử dụng cho selected experiment/test, public baseline
+và ablation vẫn validation-only. Core benchmark real decode/detector/tracking
+được tích hợp, không gồm render/encode/export. Tests và real validation smoke
+đạt; full validation/final heldout/GPU evidence vẫn pending, không nhận đã nghiệm thu.
 
 ## Cần bổ sung và giới hạn đợt triển khai này
 
@@ -164,4 +171,6 @@ duplicates còn phải được dataset audit xác nhận. Eval/GT ignore policy
 
 Hai đợt sửa Stage not implemented đã bổ sung baseline/evaluation và OAR/ablation,
 kiểm chứng local bằng model/cache/GT thật. Kaggle full-split evidence vẫn cần chạy.
-Không triển khai events/final-test hoặc tự công bố các gate đó đã đạt.
+Final CLI đã nối sau ablation theo yêu cầu, nhưng chưa có local full-validation
+freeze nên không chạy thật/test-report heldout. Không triển khai events hoặc
+tự công bố các gate Kaggle/final đã đạt từ unit/component smoke.

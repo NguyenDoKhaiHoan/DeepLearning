@@ -8,9 +8,9 @@ Tất cả hiện chưa có execution/output Kaggle trong session phát triển 
 | 01_detection_inference | detection đã chạy CPU local, chờ GPU Kaggle |
 | 02_mot_baselines | E0/E1 + TrackEval đã chạy smoke CPU; full Kaggle validation pending |
 | 03_occlusion_ablation | OAR E2/E3 + component runs đã có CPU smoke thật; full Kaggle pending |
-| 04_final_benchmark | preflight/template; cần validation freeze/final CLI |
+| 04_final_benchmark | frozen-config runner + real core benchmark đã có; full validation prerequisite, Kaggle evidence pending |
 
-Notebook02/03 đã có entrypoints baseline/OAR, notebook04 còn chờ final runner.
+Notebook02/03/04 đều có entrypoints; notebook04 kiểm full-validation freeze trước test.
 Không dùng ByteTrackLite/MOT-lite để thay baseline chuẩn.
 
 ## Chạy notebook01
@@ -106,7 +106,7 @@ CLI nhận `--detector-config`, `--manifest`, `--split validation`, `--output-ro
 E0/E1 cùng cache detection. Optional `--save-video --visualization-fps 10` tạo
 MP4 playback, không dùng10fps làm tốc độ camera hoặc benchmark pipeline.
 Không cần mở notebook04 để chạy baseline; final benchmark/test cần bước OAR/
-ablation và cấu hình đã freeze, chưa triển khai trong lần sửa lỗi này.
+ablation và cấu hình đã freeze. Không chuyển smoke thành final configuration.
 
 ## Chạy notebook03 và sửa lỗi run_ablation.py
 
@@ -135,6 +135,42 @@ prediction files; ablation_summary.json, paired_differences.json, selection.json
 Đường dẫn cấu hình được chọn nằm trong selection.json: smoke ghi candidate_config,
 full validation ghi selected_config. Nếu full validation chọn baseline, đó là
 kết quả hợp lệ; không đổi threshold trên test để ép OAR thắng.
-Chưa chạy final_test/benchmark notebook04 trong thay đổi này.
+Full held-out final execution vẫn cần artifact full-validation thật.
+
+## Chạy notebook04 ngay sau phần ablation
+
+Lấy code mới, giữ CONFIG_PATH của detector đã dùng ở validation. Đường dẫn ablation
+có thể là `ablation_<uuid>` do notebook03 tạo; không hardcode chỉ `/ablation/`.
+Nếu cùng kernel, dùng ABLATION_RUN đã có. Kernel mới đặt biến này bằng đường dẫn
+run validation đã hoàn thành, hoặc helper chỉ tự chọn khi có đúng một freeze.
+
+```python
+from pathlib import Path
+from uuid import uuid4
+from traffic_mot.evaluation.final import resolve_frozen_config
+
+FROZEN_CONFIG = resolve_frozen_config(OUTPUT_ROOT, globals().get("ABLATION_RUN"))
+FINAL_RUN = OUTPUT_ROOT / ("final_" + uuid4().hex)
+run_stage(PROJECT_ROOT, "final_evaluation.py", [
+    "--config", str(FROZEN_CONFIG), "--detector-config", str(CONFIG_PATH),
+    "--manifest", str(MOT_MANIFEST), "--split", "test",
+    "--output-root", str(FINAL_RUN)])
+print("DONE. Outputs:", FINAL_RUN)
+```
+
+Giữ cả ablation manifest/selection/snapshots vì frozen checker xác minh checksum,
+full-validation frame coverage và tham số đã chọn. Không chỉ upload riêng YAML.
+Nếu chỉ có candidate_config: chạy lại notebook03 full validation; nếu reuse
+BASELINE_REFERENCE thì reference đó cũng phải full thay vì48-frame smoke.
+Runner không parse test GT trước freeze gate và không tối ưu tham số trên test.
+Không cần `print(check_mot_dataset(...,split='test'))` trước gate; shared engine
+đã kiểm dataset sau khi xác minh freeze thành công.
+
+Benchmark mặc định100 measured frames sau warmup, real detector/tracker, không
+cache; scopes decode+detector+tracking/OAR, không gồm render/encode/export.
+`--benchmark-frames 0` để chỉ eval. Optional `--save-video --visualization-fps 10`
+là playback tường minh; không dùng10fps làm nguồn camera hoặc runtime FPS.
+Final output: final_summary.json, freeze_verification.json, selected config,
+metrics/predictions/diagnostics và benchmark.json/CSV nếu bật.
 
 Tạo lại notebook: `python traffic-mot/scripts/build_kaggle_notebooks.py`.
