@@ -17,7 +17,7 @@ Giữ nguyên web demo, train workflow, checkpoint và module cũ đang hoạt �
 | ByteTrack/BoT-SORT chuẩn | pinned stock adapters, real MOT48-frame CPU smoke + cache replay | local đạt; full Kaggle validation pending |
 | MOT data preparation | native ZIP/image manifest + validation preflight trên dữ liệu thật | local đạt, chưa metric |
 | MOT baseline evaluation | official TrackEval + multi-class ignore protocol | real CPU prefix verified, chưa toàn split |
-| OAR/ablation | protocol và notebook templates | chưa triển khai/chạy |
+| OAR/ablation | versioned policy + runner/common cache + real48-frame CPU study8 variants | local smoke đã chạy; improvement/full Kaggle pending |
 | Trajectory/events/final benchmark | schema/thiết kế | chưa triển khai/chạy |
 
 Folder/notebook được tạo không chứng minh thuật toán đã chạy. Trạng thái hiện tại
@@ -94,14 +94,18 @@ suspected_exit/unknown/occluded, adaptive retention bounded và Kalman-gated
 unmatched reassociation. GT chỉ dùng offline. ReID chỉ khi có extractor thật
 được kiểm chứng domain vehicle; không nhận diện tính năng qua tên config.
 
-**Files:** occlusion/{evidence,retention,recovery,state}.py và backend extension
-có version/diff; hooks sau stock association, trước removal và birth.
-**CLI dự kiến:** run_video thêm `--occlusion-config configs/occlusion.yaml`,
-override enabled được ghi resolved config; baseline off giữ hành vi.
+**Files hiện có:** occlusion/evidence.py, recovery.py, ablation.py; backend extension
+version motion_overlap_v1 dùng hooks sau stock association, trước removal/birth.
+State/history/retention tập trung trong recovery.py, không nhân bản module trống.
+**CLI thực:** run_ablation.py đọc policy từ configs/occlusion.yaml, cùng shared
+tracking runner. run_video.py vẫn detection-only; không quảng bá CLI chưa hỗ trợ.
 **Đầu ra:** E2/E3 predictions, recovery evidence/decision, public ID map/overhead.
 **Gate:** một predict/update mỗi frame, không cướp active match, one-to-one,
 ambiguity từ chối, exit/timeout/covariance/crowd/camera-motion/dropout tests;
-mock chỉ chứng minh invariant. **Hiện tại:** thiết kế, chưa có kết quả recovery.
+mock chỉ chứng minh invariant. **Hiện tại:** tests kiểm invariant và hồi phục ID
+trên controlled probes đạt; real48-frame smoke8 variants đã chạy. OAR làm metrics
+giảm nhẹ trong đoạn này; không có claim improvement. Frame bounds native JPG,
+ms cap chỉ khi source time đã biết; không ReID hoặc full-gap guarantees.
 
 ## 5. Kaggle ablation experiments
 
@@ -109,13 +113,18 @@ Notebook03 dùng run_ablation.py chạy E0–E3, retention-only, reassociation-o
 kết hợp. Tune **validation** với cùng budget/cache/GT episodes/hardware;
 test giữ nguyên, chưa dùng để chọn threshold. E3 chỉ làm khi BoT-SORT hook đạt gate.
 
-**CLI dự kiến:** `python scripts/run_ablation.py --config configs/experiments.yaml
+**CLI thực:** `python scripts/run_ablation.py --config configs/experiments.yaml
 --detector-config <resolved> --manifest <manifest> --split validation --output-root <dir>`.
 **Đầu ra:** per-sequence/class metrics, occlusion/size sau full-GT matching,
 recovery success với mẫu số GT cố định, sequence-paired CI, overhead và
-selected_config.yaml có hash/protocol selection được freeze.
+selected_config.yaml có hash/protocol selection được freeze **chỉ full validation**;
+smoke chỉ ghi candidate_config frozen=false. --baseline-run dùng exact cache/range
+và verify E0/E1, hoặc runner recompute tất cả từ một cache mới.
 **Gate:** thực nghiệm thật tái lập được, không tune test, không rematch chỉ heavy
-GT; giữ cả kết quả xấu. **Hiện tại:** notebook template/guard; runner chưa có.
+GT; giữ cả kết quả xấu. **Hiện tại:** runner implemented/tested local smoke,
+full Kaggle/GT episode samples cần kiểm tra. Prefix smoke có0 eligible recovery
+episodes → N/A, không biến thành success0 hay success100%. Bootstrap1 sequence
+được đánh dấu degenerate, không dùng làm chứng cứ thống kê toàn dataset.
 
 ## 6. Trajectory và Traffic Event Detection
 
@@ -153,6 +162,6 @@ Kaggle cần Add Input rồi chạy prepare_mot_dataset.py để tạo path theo
 Source checker chặn trùng sequence/source UAV/fingerprint; nguồn camera và near
 duplicates còn phải được dataset audit xác nhận. Eval/GT ignore policy chưa nghiệm thu.
 
-Đợt sửa lỗi Stage not implemented đã bổ sung baseline/evaluation còn thiếu và
-kiểm chứng local; Kaggle full-split evidence vẫn cần chạy. Không triển khai
-OAR/ablation/events/final-test hoặc tự công bố các gate đó đã đạt.
+Hai đợt sửa Stage not implemented đã bổ sung baseline/evaluation và OAR/ablation,
+kiểm chứng local bằng model/cache/GT thật. Kaggle full-split evidence vẫn cần chạy.
+Không triển khai events/final-test hoặc tự công bố các gate đó đã đạt.

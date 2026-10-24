@@ -54,7 +54,11 @@ class UltralyticsTracker(BaseTracker):
         self.backend_class = BYTETracker if self.args.tracker_type == "bytetrack" else BOTSORT
         self.id_counter = 0
         self.last_timestamp = None
-        with self._id_scope(): self.backend = self.backend_class(self.args)
+        with self._id_scope(): self.backend = self._create_backend()
+
+    def _create_backend(self):
+        """Extension point; the stock adapter always builds the unmodified backend."""
+        return self.backend_class(self.args)
 
     @contextmanager
     def _id_scope(self):
@@ -75,7 +79,7 @@ class UltralyticsTracker(BaseTracker):
             self.last_timestamp = timestamp
         packed = np.column_stack((detections.boxes, detections.scores, detections.class_ids)).astype(np.float32)
         boxes = self.boxes_class(packed, frame.shape[:2]).numpy()
-        with self._id_scope(): rows = self.backend.update(boxes, frame)
+        with self._id_scope(): rows = self.backend.update(boxes, frame, timestamp_ms=timestamp)
         if rows.size == 0: return []
         require(rows.ndim == 2 and rows.shape[1] == 8, "Pinned tracker output API changed: expected Nx8")
         h, w = frame.shape[:2]

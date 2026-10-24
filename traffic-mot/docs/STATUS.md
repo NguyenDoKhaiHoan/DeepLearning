@@ -11,8 +11,8 @@ thiếu theo IMPLEMENTATION_PLAN, không dùng tên phase/folder làm chứng c�
 | 2 Standard MOT baseline | đã triển khai + real CPU smoke | backend stock8.4.171, E0/E1, same detection cache, ReID/OAR off |
 | 3a MOT data preflight | đã kiểm tra local val/test-dev thật | 7/17 sequences; manifest và validation GT preflight đạt |
 | 3b MOT baseline evaluation | implementation + 48-frame real CPU smoke đạt | TrackEval HOTA/Identity/CLEAR; full Kaggle validation pending |
-| 4 OAR | thiết kế | chưa implementation hoặc run |
-| 5 Kaggle ablation | template | chưa baseline/OAR/data/runner |
+| 4 OAR | implemented + controlled invariant tests + real48-frame smoke | bounded retention, gated reassociation; chưa có improvement evidence |
+| 5 Kaggle ablation | runner E0–E3 + components, real CPU cache replay đạt | full Kaggle validation/frozen config còn pending |
 | 6 Trajectory/events | schema/config thiết kế | chưa engine/run |
 | 7 Final eval/benchmark/demo | template | chưa frozen config/test run/benchmark |
 
@@ -32,4 +32,9 @@ Kaggle vẫn cần Add Input và tạo manifest với mount path thực tế.
 **Bước tiếp theo phù hợp:** cập nhật code/dependencies, chạy notebook02 smoke rồi
 full validation trên Kaggle, lưu raw predictions/metrics/environment. Notebook01
 GPU evidence chưa được cung cấp lại ở workspace này; không tự suy rằng đã đạt.
-Sau baseline validation đầy đủ mới OAR; notebook03/04 vẫn template có guard.
+User đã chạy MOT preflight trên Kaggle (log24/10), nhưng chưa gửi summary/raw
+baseline đầy đủ. Để sửa lỗi missing run_ablation.py, đã thêm OAR/runner và local
+smoke eight variants trên cùng cache. E0/E1 tái tính khớp; E2/E3 HOTA/IDF1 giảm
+nhẹ trong đoạn48 frame, không công bố improvement. Xem OAR_ABLATION_REPORT.
+Notebook03 có smoke/reference/full modes; chỉ full validation mới freeze.
+Notebook04 vẫn template có guard; không tự suy Kaggle ablation đã thành công.

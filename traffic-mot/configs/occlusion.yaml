@@ -1,6 +1,8 @@
 schema_version: '1.0'
-# Design template for Phase 3; these parameters are hypotheses, not results.
+# Versioned OAR policy; thresholds are validation hypotheses, not proven improvements.
 enabled: false
+version: motion_overlap_v1
+max_position_std_box_ratio: 2.0
 evidence:
   overlap_ioa_threshold: 0.50
   history_frames: 5
@@ -11,7 +13,7 @@ retention:
   adaptive: true
   base_frames: 30
   max_frames: 90
-  max_gap_ms: 3000
+  max_gap_ms: 3000  # Enforced only when source timestamps are known; native JPG uses frame bounds.
 reassociation:
   enabled: true
   class_gate: true

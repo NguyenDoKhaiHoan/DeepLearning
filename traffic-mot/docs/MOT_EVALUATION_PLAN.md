@@ -2,8 +2,9 @@
 
 Protocol ban đầu Phase0; cập nhật24/10/2026: baseline/evaluation runner đã triển
 khai, E0/E1 đã có real48-frame CPU smoke (MOT_BASELINE_REPORT). Full validation
-Kaggle, OAR/E2/E3 và final test còn pending. Các phần occlusion diagnostics/
-recovery/benchmark bên dưới vẫn là kế hoạch nếu chưa ghi rõ bằng chứng.
+Kaggle và final test còn pending. OAR/E2/E3/components và occlusion/size/episode
+diagnostics đã được triển khai24/10, kiểm chứng48-frame local cache/GT thật ở
+OAR_ABLATION_REPORT. Full recovery episodes/benchmark vẫn cần dữ liệu/gate riêng.
 
 ## 1. Dữ liệu hợp lệ và split
 
@@ -121,6 +122,10 @@ duy trì K=3 frame observed liên tiếp, không đồng thời nhận một GT 
 pre-ID hoặc không khớp lại được tính failure trong mẫu số cố định, không loại đi.
 
 `RecoverySuccess = successful episodes / all eligible GT episodes`.
+Implementation đặt tên protocol gt_labeled_occlusion_continuity_v1: includes
+uninterrupted same-ID tracking, không chứng minh causal OAR reassociation. Gap
+không annotation không được tự gọi fully-occluded recovery. Không eligible GT
+episode thì ratio null/N/A, số thao tác reassociation không thay mẫu số này.
 Báo thêm pre-episode tracked coverage; nếu báo recovery có điều kiện trên số có
 pre-ID, phải ghi mẫu số riêng và không dùng thay số chính. Phân tích wrong-ID
 recovery, số IDSW quanh episode, recovery delay frame/ms, gap length bins và

@@ -1,1 +1,1 @@
-"""Phase 3: evidence, bounded retention and conservative track recovery."""
+"""Versioned overlap/motion recovery and validation-only component ablations."""

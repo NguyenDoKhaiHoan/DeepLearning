@@ -43,7 +43,7 @@ if not MOT_MANIFEST.exists():
     prepare_mot_manifest(MOT_MANIFEST, root=MOT_DATA_ROOT)
 print("MOT_MANIFEST:", MOT_MANIFEST)
 # Preparation lists frame/GT members without parsing held-out test annotations.
-# This prepares input only; notebook 03/04 remain blocked until OAR/final runners exist.
+# Input preparation only; the final-test runner in notebook04 remains pending.
 ''')
     preflight = code('''config_path, preflight_report = prepare_detection_config(
     PROJECT_ROOT, BUNDLE_DIR, UPSTREAM_REPO, OUTPUT_ROOT / "configs",
@@ -119,14 +119,41 @@ print("Outputs:", BASELINE_RUN)
 # E0/E1 share a verified detection cache. No FPS benchmark is inferred from replay timings.
 ''')]),
         ("03_occlusion_ablation.ipynb", "03 — Occlusion-aware recovery / validation ablations",
-         "Prepared template; requires real MOT baselines and the tested recovery module. Tune on validation only.",
-         [code('''print(check_mot_dataset(MOT_MANIFEST, split="validation"))
-'''), code('''run_stage(PROJECT_ROOT, "run_ablation.py", [
+         "Implemented OAR E2/E3 plus retention/reassociation component runs. Real CPU prefix smoke verified; full validation and improvement evidence pending.",
+         [markdown('''## Validation-only study
+
+Install the same pinned runtime and requirements-eval.txt as notebook02.
+This runs stock E0/E1 plus OAR E2/E3 and both trackers' retention-only /
+reassociation-only variants using one verified detection cache. No ReID.
+Use BASELINE_REFERENCE to reuse a completed notebook02 run and verify stock metrics.
+Without a reference the script recomputes E0/E1 itself. A smoke run creates only
+candidate_config.yaml; selected_config.yaml is created only after full validation.
+OAR may reduce metrics; inspect all results rather than assuming improvement.
+'''), code('''from traffic_mot.tracking.backend_bridge import check_backend_dependencies
+from traffic_mot.evaluation.trackeval_runner import load_metrics
+check_backend_dependencies()
+_, metric_backend = load_metrics()
+print(metric_backend)
+dataset_report = check_mot_dataset(MOT_MANIFEST, split="validation")
+print(dataset_report)
+'''), code('''from uuid import uuid4
+import json
+FULL_VALIDATION = False
+BASELINE_REFERENCE = None  # e.g. Path("/kaggle/working/traffic_mot_results/baselines_<uuid>")
+ABLATION_RUN = OUTPUT_ROOT / ("ablation_" + uuid4().hex)
+arguments = [
     "--config", str(PROJECT_ROOT / "configs/experiments.yaml"),
     "--detector-config", str(config_path), "--manifest", str(MOT_MANIFEST),
-    "--split", "validation", "--output-root", str(OUTPUT_ROOT / "ablation")])
-# Planned: E0-E3, component ablations, GT episode denominators, frozen selected config.
-# Do not run parameter search on test or present unexecuted cells as measurements.
+    "--split", "validation", "--output-root", str(ABLATION_RUN)]
+if BASELINE_REFERENCE is not None:
+    arguments += ["--baseline-run", str(BASELINE_REFERENCE)]  # Exact range/cache inferred from reference.
+elif not FULL_VALIDATION:
+    arguments += ["--sequence", dataset_report["sequences"][0]["name"], "--max-frames", "48"]
+run_stage(PROJECT_ROOT, "run_ablation.py", arguments)
+print(json.loads((ABLATION_RUN / "ablation_summary.json").read_text()))
+print(json.loads((ABLATION_RUN / "selection.json").read_text()))
+print("Outputs:", ABLATION_RUN)
+# No test tuning. A prefix smoke never freezes selected_config.yaml for notebook04.
 ''')]),
         ("04_final_benchmark.ipynb", "04 — Frozen held-out evaluation / benchmark / demo",
          "Prepared template; run only after validation selection is frozen. No test-driven tuning.",

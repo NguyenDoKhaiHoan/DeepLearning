@@ -1,3 +1,3 @@
-"""Traffic CV: verified detection, stock MOT baselines and official evaluation."""
+"""Traffic CV: detection, stock MOT, bounded recovery and validation ablations."""
 
-__version__ = "0.3.0"
+__version__ = "0.4.0"

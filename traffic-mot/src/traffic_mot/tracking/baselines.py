@@ -116,7 +116,9 @@ def run_baselines(project_root: Path, detector_config: Path, manifest_path: Path
                   max_frames: int | None = None, cache_root: Path | None = None,
                   tracker_configs: dict[str, Path] | None = None,
                   evaluation_config: Path | None = None,
-                  save_video: bool = False, visualization_fps: float | None = None) -> dict:
+                  save_video: bool = False, visualization_fps: float | None = None,
+                  experiment_profiles: dict[str, dict] | None = None,
+                  include_diagnostics: bool = False) -> dict:
     """Run standard MOT baselines; GT is read for scoring only after tracking.
 
     This entrypoint intentionally accepts validation only. Held-out evaluation
@@ -142,9 +144,15 @@ def run_baselines(project_root: Path, detector_config: Path, manifest_path: Path
     require(profile["batch_size"] == 1, "Baseline cache uses batch_size=1 for reproducible frame inference")
     configs = tracker_configs or {"E0": project_root / "configs/bytetrack.yaml", "E1": project_root / "configs/botsort.yaml"}
     require(set(configs) == {"E0", "E1"}, "Both E0 and E1 configurations are required")
-    for config in configs.values():
+    definitions = experiment_profiles or {name: {"tracker_config": config, "recovery": None} for name, config in configs.items()}
+    require(bool(definitions) and all(Path(name).name == name and name.isidentifier() for name in definitions), "Unsafe experiment names")
+    for definition in definitions.values():
+        config = Path(definition["tracker_config"])
         conf = yaml.safe_load(config.read_text(encoding="utf-8"))
         require(profile["confidence_threshold"] <= conf["tracker"]["track_low_thresh"], "Detector cutoff removes low-confidence association band")
+        if definition.get("recovery") is not None:
+            from traffic_mot.occlusion.recovery import validate_policy
+            validate_policy(definition["recovery"], conf["tracker"]["track_buffer"])
     report = check_mot_dataset(manifest_path, split=split)
     manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
     selected = manifest[split]
@@ -166,7 +174,8 @@ def run_baselines(project_root: Path, detector_config: Path, manifest_path: Path
     smoke = len(selected) != len(manifest[split]) or any(frames[s["name"]] != s["frame_count"] for s in selected)
     run = {"schema_version": "1.0.0", "status": "incomplete", "run_id": str(uuid4()),
            "started_at": datetime.now(timezone.utc).isoformat(), "split": split, "smoke_test": smoke,
-           "frame_counts": frames, "mock": False, "with_reid": False, "recovery_enabled": False,
+           "frame_counts": frames, "mock": False, "with_reid": False,
+           "recovery_enabled": any(d.get("recovery") is not None for d in definitions.values()),
            "source_manifest": str(manifest_path), "signature": signature, "evaluator": evaluator_info,
            "preflight": report, "platform": platform.platform(), "visualization_fps": visualization_fps,
            "environment": sorted(f"{d.metadata['Name']}=={d.version}" for d in distributions()),
@@ -185,12 +194,21 @@ def run_baselines(project_root: Path, detector_config: Path, manifest_path: Path
         _save(output / "evaluation_profile.json", eval_profile)
         run["evaluation_config_sha256"] = file_sha256(eval_path)
         (output / "source_manifest.json").write_text(json.dumps(manifest, indent=2), encoding="utf-8")
-        predictions: dict[str, dict] = {"E0": {}, "E1": {}}
-        timing = {"E0": [], "E1": []}
+        predictions: dict[str, dict] = {name: {} for name in definitions}
+        timing = {name: [] for name in definitions}
+        tracker_diagnostics = {name: {} for name in definitions}
         for seq in selected:
             name = seq["name"]
-            trackers = {"E0": ByteTrackTracker(configs["E0"]), "E1": BoTSORTTracker(configs["E1"])}
-            handles, mot_handles, writers = {}, {}, {}
+            trackers = {}
+            for experiment, definition in definitions.items():
+                config = Path(definition["tracker_config"])
+                if definition.get("recovery") is None:
+                    from traffic_mot.tracking.backend_bridge import UltralyticsTracker
+                    trackers[experiment] = UltralyticsTracker(config)
+                else:
+                    from traffic_mot.occlusion.recovery import RecoveryTracker
+                    trackers[experiment] = RecoveryTracker(config, definition["recovery"])
+            handles, mot_handles, writers, decision_handles = {}, {}, {}, {}
             try:
                 for experiment, tracker in trackers.items():
                     folder = output / experiment
@@ -199,6 +217,8 @@ def run_baselines(project_root: Path, detector_config: Path, manifest_path: Path
                     handles[experiment] = (folder / f"{name}.jsonl").open("x", encoding="utf-8")
                     mot_handles[experiment] = (folder / "mot" / f"{name}.txt").open("x", encoding="utf-8")
                     predictions[experiment][name] = []
+                    if definitions[experiment].get("recovery") is not None:
+                        decision_handles[experiment] = (folder / f"{name}_recovery.jsonl").open("x", encoding="utf-8")
                 cache_file = cache / cache_metadata["sequences"][name]["file"]
                 with MOTSequence(seq, manifest_path.parent) as reader, cache_file.open(encoding="utf-8") as stream:
                     for index in range(frames[name]):
@@ -213,6 +233,9 @@ def run_baselines(project_root: Path, detector_config: Path, manifest_path: Path
                             before = time.perf_counter()
                             observed = tracker.update(batch, frame, timestamp=None)
                             timing[experiment].append((time.perf_counter() - before) * 1000)
+                            if experiment in decision_handles:
+                                decision_handles[experiment].write(json.dumps({"frame_id": index + 1,
+                                    "decisions": tracker.backend.last_decisions}, allow_nan=False) + "\n")
                             tracks = [{**asdict(t), "class_name": VISDRONE_CLASSES[t.class_id]} for t in observed]
                             predictions[experiment][name].append(tracks)
                             payload = {"schema_version": "1.0.0", "sequence": name, "camera_id": seq.get("source_video_id", name),
@@ -237,19 +260,30 @@ def run_baselines(project_root: Path, detector_config: Path, manifest_path: Path
                         if (index + 1) % 100 == 0: LOGGER.info("Track replay %s %d/%d", name, index + 1, frames[name])
                     require(not stream.readline(), "Detection cache has extra frames")
             finally:
-                for handle in [*handles.values(), *mot_handles.values()]: handle.close()
+                for experiment, tracker in trackers.items():
+                    if hasattr(tracker, "diagnostics"): tracker_diagnostics[experiment][name] = tracker.diagnostics()
+                for handle in [*handles.values(), *mot_handles.values(), *decision_handles.values()]: handle.close()
                 for writer in writers.values(): writer.close()
         gt = {seq["name"]: parse_gt(read_gt(seq, manifest_path.parent), frames[seq["name"]]) for seq in selected}
         summary = {}
         for experiment, data in predictions.items():
             result = evaluate_sequences({name: (gt[name], pred) for name, pred in data.items()}, class_ids)
             result.update(split=split, smoke_test=smoke, source_manifest_sha256=signature["manifest_sha256"],
-                          sequence_frame_counts=frames, mock=False, recovery_enabled=False, with_reid=False)
+                          sequence_frame_counts=frames, mock=False,
+                          recovery_enabled=definitions[experiment].get("recovery") is not None, with_reid=False)
             write_metrics(output / experiment / "metrics.json", result)
+            if include_diagnostics:
+                from traffic_mot.evaluation.occlusion import evaluate_diagnostics
+                diagnostics = evaluate_diagnostics({name: (gt[name], pred) for name, pred in data.items()}, class_ids,
+                    recovery_window=eval_profile["diagnostics"]["recovery_window_frames"],
+                    stable_frames=eval_profile["diagnostics"]["recovery_stable_frames"])
+                _save(output / experiment / "diagnostics.json", diagnostics)
+            _save(output / experiment / "recovery_statistics.json", tracker_diagnostics[experiment])
             times = np.asarray(timing[experiment])
             summary[experiment] = {**result["combined"], "observed_track_records": sum(len(row) for v in data.values() for row in v),
                 "tracking_update_ms_mean": float(times.mean()), "tracking_update_ms_p95": float(np.percentile(times, 95)),
                 "prediction_files_sha256": {name: file_sha256(output / experiment / f"{name}.jsonl") for name in data}}
+            summary[experiment]["oar_seconds"] = sum(d["oar_seconds"] for d in tracker_diagnostics[experiment].values())
         run.update(status="complete", summary=summary)
         _save(output / "summary.json", {"smoke_test": smoke, "split": split, "metric_scale": "ratios 0..1; counts raw",
                                        "benchmark": False, "results": summary})

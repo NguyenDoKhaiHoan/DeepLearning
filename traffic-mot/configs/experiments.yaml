@@ -1,5 +1,5 @@
 schema_version: '1.0'
-status: planned_not_run
+status: implemented_validation_study_not_full_split_verified
 shared:
   detector_config: detector.yaml
   pipeline_config: pipeline.yaml

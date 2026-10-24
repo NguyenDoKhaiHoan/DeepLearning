@@ -11,6 +11,7 @@ real detector không fallback mock.
 | build_kaggle_notebooks.py | tạo lại 4 notebook thin wrappers, không chạy hoặc tạo metric |
 | prepare_mot_dataset.py | tạo manifest native JPG sequences từ val/test-dev ZIP hoặc directory; preflight selected GT |
 | run_mot_baselines.py | validation E0/E1 từ cùng cache detector thật, native JPG/ZIP, official TrackEval metrics |
+| run_ablation.py | validation E0–E3 + hai component ablations mỗi backend; OAR/inference tách GT diagnostics |
 
 ```powershell
 python traffic-mot/scripts/run_video.py --help
@@ -27,6 +28,15 @@ visualization-fps tường minh; cache reuse cần detection-cache trỏ complet
 GT đọc sau tracking, schema/config/data/frame hashes được lưu. Runner chỉ nhận
 validation, test dành cho final frozen-config runner.
 
-CLI chưa có: standalone evaluate_mot.py (metric hiện nằm trong baseline runner),
-run_ablation.py (bước5), export_events.py (bước6), final_evaluation.py/benchmark.py
-(bước7). Notebook03–04 còn guard chống chạy entrypoint chưa tồn tại.
+```powershell
+python traffic-mot/scripts/run_ablation.py --config traffic-mot/configs/experiments.yaml --detector-config <same_detector_profile.yaml> --manifest <native_manifest.json> --split validation --baseline-run <completed_E0_E1_run> --output-root <new_directory>
+```
+
+Baseline reference dùng lại cache/range và verify stock metrics. Không reference
+thì runner tự recompute E0/E1; smoke có thể chọn sequence/max-frames. Full-only
+freeze, không test tuning. Source chung trong tracking.baselines, không copy
+thuật toán trong script/notebook. Baseline E0/E1 recovery=false như trước.
+
+CLI chưa có: standalone evaluate_mot.py (metric nằm trong shared runner),
+export_events.py (bước6), final_evaluation.py/benchmark.py (bước7). Notebook04 vẫn
+có guard chống chạy entrypoint chưa tồn tại.

@@ -83,8 +83,8 @@ Kết quả và lệnh smoke thực tế: [PHASE_1_REPORT](docs/PHASE_1_REPORT.m
 
 Xem [notebooks/kaggle](../notebooks/kaggle/README.md). Notebook01 dùng cùng adapter
 và pipeline; notebook02 đã có CLI E0/E1 và TrackEval, mặc định smoke trước khi
-chạy full validation. Notebook03–04 là templates có guard vì OAR/final runner
-chưa có. Không có notebook nào được tuyên bố đã chạy GPU
+chạy full validation. Notebook03 đã có OAR/component ablation runner dùng cùng
+source/cache; notebook04 vẫn thiếu final runner. Không có notebook nào được tuyên bố đã chạy GPU
 Kaggle trong session hiện tại. Thiếu MOT dataset/GT thì HOTA/IDF1/MOTA/IDSW là N/A.
 Chỉ tune validation; test giữ cho đánh giá cấu hình đã freeze.
 
@@ -119,6 +119,37 @@ Không nhận là VisDrone challenge-equivalent. TrackEval dtype bridge chỉ s�
 np.float/np.int trong module toolkit, không thay matching/formula hoặc NumPy global.
 Known raw Frag limitation của bản pin được ghi trong metrics; summary không báo Frag.
 Xem [MOT baseline report](docs/MOT_BASELINE_REPORT.md) để xem scope/test/metrics thật.
+
+## Occlusion-aware recovery và ablation
+
+```powershell
+python traffic-mot/scripts/run_ablation.py --config traffic-mot/configs/experiments.yaml --detector-config <same_detector_profile.yaml> --manifest <same_native_manifest.json> --split validation --baseline-run <completed_baseline_run> --output-root <new_ablation_directory>
+```
+
+`--baseline-run` dùng lại exact cache/frame range từ notebook02, xác minh lại
+E0/E1 trước so sánh. Nếu không có reference, runner tự tạo một cache và tính
+lại E0/E1; dùng `--sequence <name> --max-frames 48` cho smoke, bỏ giới hạn để
+chạy toàn bộ validation. `--detection-cache` cũng được hỗ trợ với signature khớp.
+ReID off, không nhận test split. Không sao chép kết quả full thành công từ log
+data preflight; toàn bộ metrics đều phải qua actual inference/cache và TrackEval.
+
+E2/E3 thêm policy `motion_overlap_v1`: overlap lịch sử, exit hypothesis, retention
+có giới hạn, class/Kalman/IoU gates và unmatched one-to-one reassociation có
+ambiguity rejection. Không cướp stock matches, không predict hai lần/frame,
+không dùng GT trong inference. Giới hạn ms chỉ áp dụng khi có timestamp nguồn;
+native JPG dùng frame bounds và báo rõ chưa enforce ms. Không có appearance/ReID.
+
+Ngoài E0–E3 còn bốn component runs cho hai backend. Output có diagnostics theo
+occlusion/size, fixed GT episode denominator, decision traces/counters và paired
+sequence bootstrap. HOTA-heavy không được suy ra từ recall bins. Recovery rate
+là same-ID continuity sau episode GT có nhãn, không chứng minh causal OAR recovery;
+không có eligible episode thì N/A. Labeled occlusion khác unannotated full gaps.
+
+Smoke chỉ ghi `candidate_config.yaml` với frozen=false. Chỉ run đầy đủ validation
+mới ghi `selected_config.yaml`, chọn HOTA→IDF1→ít IDSW, baseline thắng khi hòa;
+không tự ưu tiên OAR nếu metrics xấu. [OAR report](docs/OAR_ABLATION_REPORT.md)
+ghi kết quả thật48-frame hiện có: OAR không cải thiện HOTA/IDF1 trên đoạn này.
+Full Kaggle validation, OAR tuning và final-test evidence còn pending.
 
 ## Tài liệu thiết kế
 

@@ -7,11 +7,11 @@ Tất cả hiện chưa có execution/output Kaggle trong session phát triển 
 |---|---|
 | 01_detection_inference | detection đã chạy CPU local, chờ GPU Kaggle |
 | 02_mot_baselines | E0/E1 + TrackEval đã chạy smoke CPU; full Kaggle validation pending |
-| 03_occlusion_ablation | preflight/template; cần baseline/OAR/runner |
+| 03_occlusion_ablation | OAR E2/E3 + component runs đã có CPU smoke thật; full Kaggle pending |
 | 04_final_benchmark | preflight/template; cần validation freeze/final CLI |
 
-Notebook02 đã có entrypoint baseline; templates03–04 còn dừng khi thiếu OAR/final
-runner. Không dùng ByteTrackLite/MOT-lite để thay baseline chuẩn.
+Notebook02/03 đã có entrypoints baseline/OAR, notebook04 còn chờ final runner.
+Không dùng ByteTrackLite/MOT-lite để thay baseline chuẩn.
 
 ## Chạy notebook01
 
@@ -107,5 +107,34 @@ E0/E1 cùng cache detection. Optional `--save-video --visualization-fps 10` tạ
 MP4 playback, không dùng10fps làm tốc độ camera hoặc benchmark pipeline.
 Không cần mở notebook04 để chạy baseline; final benchmark/test cần bước OAR/
 ablation và cấu hình đã freeze, chưa triển khai trong lần sửa lỗi này.
+
+## Chạy notebook03 và sửa lỗi run_ablation.py
+
+Lấy code mới bằng `git pull --ff-only`; cùng requirements runtime/eval với
+notebook02, không thêm ReID model. Trong notebook03 bản mới, chỉnh đường dẫn
+config/Input như notebook02. Nếu notebook02 đã hoàn thành, đặt:
+
+```python
+BASELINE_REFERENCE = Path("/kaggle/working/traffic_mot_results/baselines_<run_uuid>")
+```
+
+Runner kế thừa exact cache, sequence và frame range từ baseline, không infer lại;
+kiểm sha/config/pixel hashes rồi tính E0/E1 mới và so metrics cũ trước so OAR.
+Baseline smoke chỉ dẫn tới ablation smoke, không thể freeze để đánh giá test.
+Nếu baseline dùng descriptor `adapter_status` cũ, khác biệt status được bỏ qua
+nhưng mọi scoring parameter vẫn phải khớp. Không thay class scope để tạo improvement.
+
+Không có reference: giữ `BASELINE_REFERENCE=None` và `FULL_VALIDATION=False` cho
+smoke48 frame; khi đạt, đặt True cho đủ validation. Script sẽ infer/cache một lần
+cho tất cả8 experiments. Các cell cũ gọi trực tiếp `run_ablation.py` với các
+arguments config/detector-config/manifest/split/output-root hiện cũng đã hoạt động.
+Dùng thư mục output mới cho mỗi lần chạy, không overwrite run cũ.
+
+Output: E0–E3, BT/BS retention-only/reassociation-only metrics+diagnostics+
+prediction files; ablation_summary.json, paired_differences.json, selection.json.
+Đường dẫn cấu hình được chọn nằm trong selection.json: smoke ghi candidate_config,
+full validation ghi selected_config. Nếu full validation chọn baseline, đó là
+kết quả hợp lệ; không đổi threshold trên test để ép OAR thắng.
+Chưa chạy final_test/benchmark notebook04 trong thay đổi này.
 
 Tạo lại notebook: `python traffic-mot/scripts/build_kaggle_notebooks.py`.
