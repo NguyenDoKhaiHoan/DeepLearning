@@ -1,7 +1,7 @@
 # Multi-Object Detection and Tracking under Occlusion in Traffic Videos
 
-Ưu tiên hoàn thiện đề tài Computer Vision trước Đồ án3. **Hiện đã có detection
-integration/video export chạy thật CPU; Kaggle GPU và standard MOT còn pending.**
+Ưu tiên hoàn thiện đề tài Computer Vision trước Đồ án3. **Detection và baseline
+ByteTrack/BoT-SORT đã chạy smoke thật CPU; full Kaggle validation còn pending.**
 Không triển khai web/frontend, Kafka, Flink hoặc database trong lộ trình CV.
 Các module cũ của repository cha được giữ nguyên.
 
@@ -10,8 +10,8 @@ Các module cũ của repository cha được giữ nguyên.
 [STATUS](docs/STATUS.md) chỉ ghi kết quả có bằng chứng; [IMPLEMENTATION_PLAN](docs/IMPLEMENTATION_PLAN.md)
 quy định thứ tự: detection + Kaggle → ByteTrack/BoT-SORT → MOT baseline evaluation
 Kaggle → Occlusion-Aware Recovery → validation ablation → trajectory/events →
-final heldout evaluation/benchmark/demo. Các thuật toán tracking/evaluator mới
-chưa được triển khai; ByteTrackLite/MOT-lite cũ không thay thế baseline chuẩn.
+final heldout evaluation/benchmark/demo. Baseline dùng backend chuẩn đã pin và
+official TrackEval metrics; ByteTrackLite/MOT-lite cũ được giữ nguyên riêng biệt.
 
 ## Cài đặt
 
@@ -82,16 +82,43 @@ Kết quả và lệnh smoke thực tế: [PHASE_1_REPORT](docs/PHASE_1_REPORT.m
 ## Kaggle
 
 Xem [notebooks/kaggle](../notebooks/kaggle/README.md). Notebook01 dùng cùng adapter
-và pipeline, preflight GPU/asset/video bắt buộc; notebook02–04 là templates có
-guard vì backend/runner chưa có. Không có notebook nào được tuyên bố đã chạy GPU
+và pipeline; notebook02 đã có CLI E0/E1 và TrackEval, mặc định smoke trước khi
+chạy full validation. Notebook03–04 là templates có guard vì OAR/final runner
+chưa có. Không có notebook nào được tuyên bố đã chạy GPU
 Kaggle trong session hiện tại. Thiếu MOT dataset/GT thì HOTA/IDF1/MOTA/IDSW là N/A.
 Chỉ tune validation; test giữ cho đánh giá cấu hình đã freeze.
 
 Ngày24/10 đã kiểm tra MOT val/test-dev ZIP thật và bổ sung
 `scripts/prepare_mot_dataset.py` tạo manifest trực tiếp từ native JPG sequences
 (ZIP hoặc thư mục), không chuyển thành MP4 giả FPS. Xem
-[MOT data preflight report](docs/MOT_DATA_PREPARATION_REPORT.md). Đây mới là chuẩn
-bị dữ liệu; notebook02–04 vẫn thiếu tracker/evaluator/OAR runner.
+[MOT data preflight report](docs/MOT_DATA_PREPARATION_REPORT.md).
+
+## MOT baselines đã triển khai
+
+```powershell
+python -m pip install -r traffic-mot/requirements-eval.txt
+python traffic-mot/scripts/run_mot_baselines.py --detector-config traffic-mot/configs/detector.yaml --manifest <native_manifest.json> --split validation --sequence uav0000305_00000_v --max-frames 48 --output-root <new_run_directory>
+```
+
+Bỏ `--sequence`/`--max-frames` để chạy toàn bộ validation. Không nhận split=test
+ở runner tuning này. Native JPG/ZIP giữ resolution/frame order; timestamp nguồn
+chưa biết để null/frame_index. Optional `--save-video --visualization-fps 10`
+chỉ chọn tốc độ playback; video pad tối đa1 pixel phải/dưới khi kích thước lẻ,
+không thay ảnh inference/evaluation. Không coi encoded FPS là processing FPS.
+
+Detector chạy một lần tạo cache được kiểm hash/config/data/pixel/frame range;
+E0/E1 cùng replay cache đó. `--detection-cache <cache_directory>` cho run mới
+có đúng signature để tránh inference lại. Không dùng cache thiếu/mock/thay đổi.
+BoT-SORT sparseOptFlow GMC, ReID=false; OAR=false. Output có predictions JSONL,
+MOT TXT, class sidecars, metrics JSON/raw, summary JSON/CSV và manifest.
+HOTA/IDF1/MOTA là ratio0..1 (MOTA có thể âm); IDSW/MT/ML là count.
+
+Protocol `visdrone_vehicle_research_v1` đánh giá class4/5/6/9 theo evaluation.yaml,
+bảo vệ valid GT matches rồi suppress unmatched prediction trong explicit ignore.
+Không nhận là VisDrone challenge-equivalent. TrackEval dtype bridge chỉ sửa
+np.float/np.int trong module toolkit, không thay matching/formula hoặc NumPy global.
+Known raw Frag limitation của bản pin được ghi trong metrics; summary không báo Frag.
+Xem [MOT baseline report](docs/MOT_BASELINE_REPORT.md) để xem scope/test/metrics thật.
 
 ## Tài liệu thiết kế
 

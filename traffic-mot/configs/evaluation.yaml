@@ -5,7 +5,7 @@ dataset:
   type: visdrone_mot
   root: null
   split_manifest: null
-  adapter_status: planned_phase_5
+  adapter_status: implemented_research_protocol_v1
   # Conservative initial MOT vehicle scope. Verify against chosen release.
   evaluated_class_ids: [4, 5, 6, 9]
   unknown_occlusion: exclude_from_strata_only

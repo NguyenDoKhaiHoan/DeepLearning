@@ -8,9 +8,9 @@ thiếu theo IMPLEMENTATION_PLAN, không dùng tên phase/folder làm chứng c�
 | Phase0 | local verified | audit/docs/config/schema, PHASE_0_REPORT |
 | 1a Detection local | model/video/export đã chạy thật CPU | PHASE_1_REPORT, run manifest/MP4/JSONL |
 | 1b Detection Kaggle | code/notebook/preflight chuẩn bị | chưa có phiên Kaggle GPU thực tế |
-| 2 Standard MOT baseline | chưa triển khai | chỉ configs; legacy lite không thay chuẩn |
+| 2 Standard MOT baseline | đã triển khai + real CPU smoke | backend stock8.4.171, E0/E1, same detection cache, ReID/OAR off |
 | 3a MOT data preflight | đã kiểm tra local val/test-dev thật | 7/17 sequences; manifest và validation GT preflight đạt |
-| 3b MOT baseline evaluation | chưa triển khai/chưa chạy | tracker chuẩn/evaluator/runner còn thiếu |
+| 3b MOT baseline evaluation | implementation + 48-frame real CPU smoke đạt | TrackEval HOTA/Identity/CLEAR; full Kaggle validation pending |
 | 4 OAR | thiết kế | chưa implementation hoặc run |
 | 5 Kaggle ablation | template | chưa baseline/OAR/data/runner |
 | 6 Trajectory/events | schema/config thiết kế | chưa engine/run |
@@ -25,10 +25,11 @@ Ngày24/10 tìm thấy `D:/VisDrone2019-MOT-{val,test-dev}.zip` và kiểm tra i
 2846/6635 ảnh, 7/17 annotation files. Tạo native manifest, đọc toàn bộ val GT
 và decode ảnh đầu mỗi val sequence. Raw target ID0 hợp lệ đã được checker sửa;
 không ép dữ liệu thành video/FPS. Evidence ở MOT_DATA_PREPARATION_REPORT.
-Dataset này mới đủ cho data preflight, chưa có kết quả inference/tracking/eval
-trên MOT. Kaggle vẫn cần Add Input và tạo manifest với mount path thực tế.
+Dataset đã có inference/tracking/eval smoke48 frame sequence uav0000305_00000_v;
+chưa có toàn bộ validation hoặc GPU benchmark. Xem MOT_BASELINE_REPORT.
+Kaggle vẫn cần Add Input và tạo manifest với mount path thực tế.
 
-**Bước tiếp theo phù hợp:** chạy notebook01 với bundle/video thật trên Kaggle GPU,
-lưu environment/checksums/outputs và đọc lại video. Chỉ khi gate bước1 đạt mới
-triển khai ByteTrack/BoT-SORT chuẩn; tiếp theo là MOT baseline evaluation trước
-khi nghiên cứu OAR. Các notebooks02–04 hiện có guard chống chạy CLI chưa tồn tại.
+**Bước tiếp theo phù hợp:** cập nhật code/dependencies, chạy notebook02 smoke rồi
+full validation trên Kaggle, lưu raw predictions/metrics/environment. Notebook01
+GPU evidence chưa được cung cấp lại ở workspace này; không tự suy rằng đã đạt.
+Sau baseline validation đầy đủ mới OAR; notebook03/04 vẫn template có guard.

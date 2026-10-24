@@ -14,9 +14,10 @@ Giữ nguyên web demo, train workflow, checkpoint và module cũ đang hoạt �
 | Detection/VideoReader/MP4/JSONL | 48 frame giao thông thật CPU, video đọc lại được | local có bằng chứng; xem PHASE_1_REPORT |
 | Kaggle detection | notebook01 dùng source chung + preflight GPU/assets/video | chuẩn bị; chưa chạy Kaggle |
 | ByteTrackLite/MOT-lite cũ | tests legacy, greedy association/approximate metrics | giữ nguyên; không phải baseline chuẩn |
-| ByteTrack/BoT-SORT chuẩn | YAML và thiết kế | chưa triển khai/chạy |
+| ByteTrack/BoT-SORT chuẩn | pinned stock adapters, real MOT48-frame CPU smoke + cache replay | local đạt; full Kaggle validation pending |
 | MOT data preparation | native ZIP/image manifest + validation preflight trên dữ liệu thật | local đạt, chưa metric |
-| MOT evaluation/OAR/ablation | protocol và notebook templates | chưa triển khai/chạy |
+| MOT baseline evaluation | official TrackEval + multi-class ignore protocol | real CPU prefix verified, chưa toàn split |
+| OAR/ablation | protocol và notebook templates | chưa triển khai/chạy |
 | Trajectory/events/final benchmark | schema/thiết kế | chưa triển khai/chạy |
 
 Folder/notebook được tạo không chứng minh thuật toán đã chạy. Trạng thái hiện tại
@@ -54,14 +55,16 @@ backend; không thay detector bằng YOLO, không đổi tên ByteTrackLite thà
 Kalman/high-low association/lifecycle dùng backend đã pin; ReID off, GMC tường
 minh. Cùng detection cache có hash cho E0/E1; OAR off.
 
-**Files:** tracking/{base,bytetrack,botsort,backend_bridge}.py và CLI tracker trong
-run_video.py; orchestration `run_mot_baselines.py` cho notebook02.
-**CLI dự kiến, chưa chạy được:** `python scripts/run_video.py --source <video>
---tracker bytetrack --tracker-config configs/bytetrack.yaml ...`, tương tự botsort.
+**Files hiện có:** tracking/{base,bytetrack,botsort,backend_bridge,baselines}.py,
+video/mot_sequence.py và CLI run_mot_baselines.py cho notebook02. run_video.py
+vẫn detection-only; không quảng bá --tracker khi CLI đó chưa nhận argument.
+**CLI thực:** `python scripts/run_mot_baselines.py --detector-config <resolved>
+--manifest <native_manifest.json> --split validation --output-root <new_dir>`.
 **Đầu ra:** tracks.jsonl, MOT predictions+class sidecar, ID video, provenance.
 **Gate:** empty/high/low/lost/remove tests, no birth từ low, đúng buffer; ID không
 reset/lẫn session; off bằng backend gốc; collision/class-switch/GMC tests;
-video thật đọc lại. **Hiện tại:** chưa có implementation hoặc kết quả chuẩn.
+video thật đọc lại. **Hiện tại:** stock backend parity/lifecycle/ID tests đạt,
+real48-frame CPU smoke + identical replay observations; full GPU validation pending.
 
 ## 3. Kaggle MOT baseline evaluation — bắt buộc trước cải tiến
 
@@ -70,17 +73,19 @@ sequence/camera. Không dùng VisDrone-DET làm tracking GT. Xác nhận scope c
 (khởi đầu vehicle4/5/6/9) trước khi đóng băng. Tạo VisDroneMOTAdapter cho TrackEval
 multi-class/ignore, không đưa car vào reader MOTChallenge pedestrian mặc định.
 
-**CLI dự kiến:** `python scripts/run_mot_baselines.py --detector-config <resolved>
+**CLI thực:** `python scripts/run_mot_baselines.py --detector-config <resolved>
 --manifest <mot_split_manifest.json> --split validation --output-root <new_dir>`.
-Notebook02 gọi CLI chung; CLI orchestration tracking và evaluate_mot.py.
+Notebook02 gọi CLI chung; CLI dùng evaluation/trackeval_runner.py. Standalone
+evaluate_mot.py chưa có, không cần để chạy baseline/eval end-to-end hiện tại.
 **Đầu ra:** E0/E1 predictions/cache, raw TrackEval JSON, HOTA/IDF1/MOTA/IDSW/MT/ML,
 GT counts, ignore diagnostics, split/hash/environment và failure clips.
 **Gate:** perfect/missing/FP/ID-switch/fragment/class/ignore/empty fixtures,
 đối chiếu trực tiếp toolkit, timeline không bị zip cắt; validation Kaggle chạy
 thật với E0/E1 cùng cache/precision/frame order. Thiếu GT → N/A, không số giả.
-**Cập nhật24/10:** đã tìm và kiểm tra val/test-dev ZIP thật trên ổD, tạo manifest
-native images, preflight validation đạt; chưa có tracker/evaluator runner hoặc
-MOT metrics. Không nhầm data preflight với nghiệm thu baseline evaluation.
+**Cập nhật24/10:** native images preflight và baseline/eval smoke48 frame thật
+đạt; class4/5/6/9, protocol nghiên cứu versioned, official HOTA/Identity/CLEAR,
+known raw Frag limitation được công bố. Notebook02 có smoke/full switch.
+Không lấy prefix result để nghiệm thu full validation hoặc công bố GPU FPS.
 
 ## 4. Occlusion-Aware Tracking improvement
 
@@ -148,6 +153,6 @@ Kaggle cần Add Input rồi chạy prepare_mot_dataset.py để tạo path theo
 Source checker chặn trùng sequence/source UAV/fingerprint; nguồn camera và near
 duplicates còn phải được dataset audit xác nhận. Eval/GT ignore policy chưa nghiệm thu.
 
-Đợt này chỉ hoàn thiện bước chưa xong đầu tiên: detection integration và phần
-Kaggle inference dùng chung source; chuẩn bị template02–04 có preflight/guard.
-Không triển khai bước2–7 hoặc công bố chúng hoàn thành khi chưa có bằng chứng.
+Đợt sửa lỗi Stage not implemented đã bổ sung baseline/evaluation còn thiếu và
+kiểm chứng local; Kaggle full-split evidence vẫn cần chạy. Không triển khai
+OAR/ablation/events/final-test hoặc tự công bố các gate đó đã đạt.

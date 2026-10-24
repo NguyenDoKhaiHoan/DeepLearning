@@ -43,7 +43,7 @@ if not MOT_MANIFEST.exists():
     prepare_mot_manifest(MOT_MANIFEST, root=MOT_DATA_ROOT)
 print("MOT_MANIFEST:", MOT_MANIFEST)
 # Preparation lists frame/GT members without parsing held-out test annotations.
-# This does not implement the missing tracker/evaluator/ablation CLI.
+# This prepares input only; notebook 03/04 remain blocked until OAR/final runners exist.
 ''')
     preflight = code('''config_path, preflight_report = prepare_detection_config(
     PROJECT_ROOT, BUNDLE_DIR, UPSTREAM_REPO, OUTPUT_ROOT / "configs",
@@ -85,14 +85,38 @@ print(verify_detection_run(Path(result["output_dir"])))
 # Smoke only. Remove max_frames for a full video after inspecting the outputs.
 ''')]),
         ("02_mot_baselines.ipynb", "02 — ByteTrack / BoT-SORT and MOT baseline evaluation",
-         "Prepared orchestration template. Standard trackers and evaluator CLI are not implemented yet; this notebook must stop until their gates pass.",
-         [code('''dataset_report = check_mot_dataset(MOT_MANIFEST, split="validation")
+         "Implemented E0/E1 stock baselines and official TrackEval metrics. Real local CPU prefix smoke verified; full Kaggle validation pending.",
+         [markdown('''## Baseline dependencies
+
+Install `traffic-mot/requirements.txt` and `traffic-mot/requirements-eval.txt`
+using this kernel's Python before running. TrackEval must be the Git commit pinned
+in requirements-eval.txt. E0=ByteTrack, E1=BoT-SORT with GMC and ReID off.
+This notebook runs validation only. Start with a sequence/prefix smoke, inspect
+outputs, then select FULL_VALIDATION=True. No OAR/ablation/final-test result is produced.
+'''), code('''from traffic_mot.tracking.backend_bridge import check_backend_dependencies
+from traffic_mot.evaluation.trackeval_runner import load_metrics
+check_backend_dependencies()
+_, metric_backend = load_metrics()
+print(metric_backend)
+dataset_report = check_mot_dataset(MOT_MANIFEST, split="validation")
 print(dataset_report)
-'''), code('''run_stage(PROJECT_ROOT, "run_mot_baselines.py", [
+'''), code('''from uuid import uuid4
+FULL_VALIDATION = False  # Set True only after the real prefix smoke succeeds.
+BASELINE_RUN = OUTPUT_ROOT / ("baselines_" + uuid4().hex)
+arguments = [
     "--detector-config", str(config_path), "--manifest", str(MOT_MANIFEST),
-    "--split", "validation", "--output-root", str(OUTPUT_ROOT / "baselines")])
-# Planned output: immutable shared detection cache, E0/E1 predictions and TrackEval tables.
-# No legacy ByteTrackLite/MOT-lite metrics are substituted when this CLI is absent.
+    "--split", "validation", "--output-root", str(BASELINE_RUN)]
+if not FULL_VALIDATION:
+    arguments += ["--sequence", dataset_report["sequences"][0]["name"], "--max-frames", "48"]
+# Optional display-only video (native JPG FPS is unknown):
+# arguments += ["--save-video", "--visualization-fps", "10"]
+run_stage(PROJECT_ROOT, "run_mot_baselines.py", arguments)
+import json
+summary = json.loads((BASELINE_RUN / "summary.json").read_text())
+print(summary)
+print("Outputs:", BASELINE_RUN)
+# HOTA/IDF1/MOTA are ratios 0..1; IDSW is a count. Prefix smoke is NOT a full split result.
+# E0/E1 share a verified detection cache. No FPS benchmark is inferred from replay timings.
 ''')]),
         ("03_occlusion_ablation.ipynb", "03 — Occlusion-aware recovery / validation ablations",
          "Prepared template; requires real MOT baselines and the tested recovery module. Tune on validation only.",

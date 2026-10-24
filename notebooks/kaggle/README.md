@@ -6,12 +6,12 @@ Tất cả hiện chưa có execution/output Kaggle trong session phát triển 
 | Notebook | Trạng thái |
 |---|---|
 | 01_detection_inference | detection đã chạy CPU local, chờ GPU Kaggle |
-| 02_mot_baselines | preflight/template; tracker/evaluation CLI chưa có |
+| 02_mot_baselines | E0/E1 + TrackEval đã chạy smoke CPU; full Kaggle validation pending |
 | 03_occlusion_ablation | preflight/template; cần baseline/OAR/runner |
 | 04_final_benchmark | preflight/template; cần validation freeze/final CLI |
 
-Template02–04 dừng với lỗi khi thiếu entrypoint; không dùng ByteTrackLite/MOT-lite
-để lấp baseline chuẩn và không tạo metric giả.
+Notebook02 đã có entrypoint baseline; templates03–04 còn dừng khi thiếu OAR/final
+runner. Không dùng ByteTrackLite/MOT-lite để thay baseline chuẩn.
 
 ## Chạy notebook01
 
@@ -84,7 +84,28 @@ ZIP dựa filename/size/CRC; hash archive giữ integrity. Đối với images_d
 hash ảnh thật; chưa làm perceptual duplicate detection hoặc kiểm tra tất cả ảnh
 decode được. Chỉ khi có evaluator chuẩn mới báo HOTA/IDF1/MOTA/IDSW.
 
-**Có manifest không đồng nghĩa notebook02–04 chạy tracking được:** các runner
-ByteTrack/BoT-SORT/evaluation/OAR/final còn thiếu và notebook vẫn dừng ở guard.
+## Chạy notebook02 và sửa lỗi Stage not implemented
+
+Code đã bổ sung `traffic-mot/scripts/run_mot_baselines.py`. Lấy version mới và
+cài cả dependency evaluator trong **cùng kernel Python** trước khi chạy:
+
+```python
+!git -C /kaggle/working/DeepLearning pull --ff-only
+%pip install ultralytics==8.4.171 lap==0.5.12 -r /kaggle/working/DeepLearning/traffic-mot/requirements-eval.txt
+```
+
+Runtime detector yêu cầu requirements.txt như notebook01. Nếu pip thay các module
+đã import, restart kernel rồi chạy lại setup. Import notebook02 bản mới từ GitHub;
+chỉnh BUNDLE_DIR/MOT_DATA_ROOT hoặc MOT_MANIFEST đúng Input/config đã có.
+Mặc định `FULL_VALIDATION=False`: một sequence48 frame, output ghi smoke_test=true.
+Kiểm tra predictions/metrics/preview trước, sau đó đặt True để chạy đủ7 sequence.
+Output run có UUID mới mỗi lần, không ghi đè kết quả hoặc cache cũ.
+
+CLI nhận `--detector-config`, `--manifest`, `--split validation`, `--output-root`
+đúng các arguments trong cell báo lỗi. Chỉ dùng native manifest từ script chuẩn bị,
+E0/E1 cùng cache detection. Optional `--save-video --visualization-fps 10` tạo
+MP4 playback, không dùng10fps làm tốc độ camera hoặc benchmark pipeline.
+Không cần mở notebook04 để chạy baseline; final benchmark/test cần bước OAR/
+ablation và cấu hình đã freeze, chưa triển khai trong lần sửa lỗi này.
 
 Tạo lại notebook: `python traffic-mot/scripts/build_kaggle_notebooks.py`.

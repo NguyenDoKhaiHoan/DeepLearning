@@ -107,7 +107,7 @@ def run_detection(project_root: Path, config_path: Path, video: Path, output_dir
 
 
 def run_stage(project_root: Path, entrypoint: str, arguments: list[str]) -> None:
-    """Execute a future shared CLI only when it actually exists; no fake results."""
+    """Execute a shared CLI from the notebook's own environment, or fail clearly."""
     path = project_root / "scripts" / entrypoint
     require(path.is_file(), f"Stage not implemented: {entrypoint}. Complete the earlier acceptance gate first.")
     subprocess.run([sys.executable, str(path), *arguments], check=True, cwd=project_root)

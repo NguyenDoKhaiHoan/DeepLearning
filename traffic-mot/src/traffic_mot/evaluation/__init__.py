@@ -1,1 +1,1 @@
-"""Phase 5: MOT dataset adapter, TrackEval runner and diagnostics."""
+"""Multiclass VisDrone research preprocessing and official TrackEval metrics."""

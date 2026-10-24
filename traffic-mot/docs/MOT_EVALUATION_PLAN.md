@@ -1,8 +1,9 @@
 # Kế hoạch đánh giá MOT và cải tiến dưới che khuất
 
-Trạng thái Phase 0: protocol được thiết kế, chưa có run E0–E3 hoặc bảng số liệu
-tracking mới. Phase 5 mới triển khai runner. Mọi kết quả detection trước đây là
-bằng chứng detector, không thay cho tracking dưới che khuất theo thời gian.
+Protocol ban đầu Phase0; cập nhật24/10/2026: baseline/evaluation runner đã triển
+khai, E0/E1 đã có real48-frame CPU smoke (MOT_BASELINE_REPORT). Full validation
+Kaggle, OAR/E2/E3 và final test còn pending. Các phần occlusion diagnostics/
+recovery/benchmark bên dưới vẫn là kế hoạch nếu chưa ghi rõ bằng chứng.
 
 ## 1. Dữ liệu hợp lệ và split
 
@@ -35,7 +36,10 @@ implementation của toolkit; không tự viết công thức HOTA/IDF1. Bộ đ
 `MotChallenge2DBox` mặc định chỉ chấp nhận pedestrian; không truyền VisDrone
 category 4 vào reader đó và tin rằng đó là car evaluation.
 
-Phase 5 tạo `VisDroneMOTAdapter` trên `BaseDataset` contract: cung cấp valid class,
+Implementation hiện có `VisDroneMOTAdapter` tạo metric data dùng IoU helper của
+`BaseDataset`, rồi gọi trực tiếp official metric eval_sequence/combine_sequences
+và combine_classes_det_averaged (không dùng pedestrian dataset reader).
+Adapter cung cấp valid class,
 timeline đầy đủ, GT/tracker IDs remapped nhất quán theo sequence, similarity IoU,
 num_gt_ids/dets và num_tracker_ids/dets. Chỉ remap ID phục vụ evaluator;
 không chỉnh prediction gốc hoặc split identity theo occlusion. Export MOTChallenge
@@ -68,7 +72,7 @@ GT/ignore region để tránh che mất FP/FN hoặc xóa đúng detection.
 | CLEAR | MOTA, IDSW, FP, FN, MT, ML và fragmentation nếu toolkit có |
 | Runtime | detector/tracking/recovery/pipeline latency và FPS, protocol mục 7 |
 
-MT/ML dùng ngưỡng toolkit (ít nhất 80% / dưới 20% đời sống GT được theo dõi).
+MT/ML dùng đúng ngưỡng bản toolkit đã pin (MT >80%, ML <20% đời sống GT được theo dõi).
 MOTA có thể âm. Ghi số GT tracks/observations/sequences và scale metric 0–1 hay
 0–100. Multi-class báo từng class, macro nếu có định nghĩa và combined counts
 do toolkit tổng hợp; không trung bình MOTA/HOTA các sequence tùy ý.
@@ -77,6 +81,10 @@ Acceptance fixtures: perfect sequence, missing observation, FP, đổi ID giữa
 fragment + unmatched gap, class sai, all-empty, GT-empty nhưng có prediction,
 duplicate ID phải lỗi, ignore overlap, native resolution khác và frame origin.
 So trực tiếp output toolkit trên fixture, không dựa vào `MOT-lite` hiện có.
+Known upstream limitation: CLEAR bản pin có thể undercount Frag khi frame không
+có prediction nào. Summary hiện không báo Frag, raw vẫn giữ toolkit output với
+disclosure. np.float/np.int cũ được bridge local trong module toolkit, không sửa
+metric formula hoặc global NumPy. Protocol hiện không tuyên bố challenge-equivalent.
 
 ## 4. Đánh giá theo occlusion và size
 

@@ -1,3 +1,3 @@
-"""Traffic CV package: verified detection/video integration, tracking planned."""
+"""Traffic CV: verified detection, stock MOT baselines and official evaluation."""
 
-__version__ = "0.2.0"
+__version__ = "0.3.0"
