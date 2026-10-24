@@ -1,6 +1,6 @@
 # Lộ trình ưu tiên hoàn thiện đề tài Computer Vision
 
-Cập nhật 23/10/2026. Mục tiêu: **Phát hiện và theo dõi đa đối tượng dưới điều kiện
+Cập nhật 24/10/2026. Mục tiêu: **Phát hiện và theo dõi đa đối tượng dưới điều kiện
 che khuất trong video giao thông**. Hoàn thiện và nghiệm thu đề tài này trước
 Đồ án3. Không phát triển frontend, web backend, Kafka, Flink hoặc database ở đây.
 Giữ nguyên web demo, train workflow, checkpoint và module cũ đang hoạt động.
@@ -15,6 +15,7 @@ Giữ nguyên web demo, train workflow, checkpoint và module cũ đang hoạt �
 | Kaggle detection | notebook01 dùng source chung + preflight GPU/assets/video | chuẩn bị; chưa chạy Kaggle |
 | ByteTrackLite/MOT-lite cũ | tests legacy, greedy association/approximate metrics | giữ nguyên; không phải baseline chuẩn |
 | ByteTrack/BoT-SORT chuẩn | YAML và thiết kế | chưa triển khai/chạy |
+| MOT data preparation | native ZIP/image manifest + validation preflight trên dữ liệu thật | local đạt, chưa metric |
 | MOT evaluation/OAR/ablation | protocol và notebook templates | chưa triển khai/chạy |
 | Trajectory/events/final benchmark | schema/thiết kế | chưa triển khai/chạy |
 
@@ -77,7 +78,9 @@ GT counts, ignore diagnostics, split/hash/environment và failure clips.
 **Gate:** perfect/missing/FP/ID-switch/fragment/class/ignore/empty fixtures,
 đối chiếu trực tiếp toolkit, timeline không bị zip cắt; validation Kaggle chạy
 thật với E0/E1 cùng cache/precision/frame order. Thiếu GT → N/A, không số giả.
-**Hiện tại:** chưa có dataset MOT, runner hoặc run; không nhảy qua bước này.
+**Cập nhật24/10:** đã tìm và kiểm tra val/test-dev ZIP thật trên ổD, tạo manifest
+native images, preflight validation đạt; chưa có tracker/evaluator runner hoặc
+MOT metrics. Không nhầm data preflight với nghiệm thu baseline evaluation.
 
 ## 4. Occlusion-Aware Tracking improvement
 
@@ -140,9 +143,10 @@ rerun, config/data hash, disjoint splits và đủ artifact; lúc đó mới ngh
 
 Local đã có checkpoint/config/source. Kaggle cần mount đúng bundle và video,
 checkout source pin, bật GPU rồi lưu artifact notebook01. Máy local hiện không
-có CUDA. Chưa có dataset MOT/persistent IDs/occlusion/ignore và disjoint split
-manifest trong dữ liệu dự án. Source checker chỉ chặn duplicate sequence/path/hash;
-nguồn camera/các clip cắt cùng video còn phải được dataset audit xác nhận.
+có CUDA. Đã có MOT val/test-dev ngoài Git, manifest local và preflight validation;
+Kaggle cần Add Input rồi chạy prepare_mot_dataset.py để tạo path theo mount.
+Source checker chặn trùng sequence/source UAV/fingerprint; nguồn camera và near
+duplicates còn phải được dataset audit xác nhận. Eval/GT ignore policy chưa nghiệm thu.
 
 Đợt này chỉ hoàn thiện bước chưa xong đầu tiên: detection integration và phần
 Kaggle inference dùng chung source; chuẩn bị template02–04 có preflight/guard.

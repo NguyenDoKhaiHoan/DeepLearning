@@ -28,12 +28,22 @@ PROJECT_ROOT = REPO_ROOT / "traffic-mot"
 BUNDLE_DIR = Path("/kaggle/input/REPLACE_ME/E1_p2_final")
 UPSTREAM_REPO = REPO_ROOT / "RT-DETR/rtdetrv2_pytorch"
 VIDEO = Path("/kaggle/input/REPLACE_ME/traffic.mp4")
-MOT_MANIFEST = Path("/kaggle/input/REPLACE_ME/mot_split_manifest.json")
 OUTPUT_ROOT = Path("/kaggle/working/traffic_mot_results")
+MOT_DATA_ROOT = Path("/kaggle/input/visdrone-mot")  # Use the actual Add Input mount path.
+MOT_MANIFEST = OUTPUT_ROOT / "mot_split_manifest.json"  # Generated below for notebooks 02-04.
 assert (PROJECT_ROOT / "src/traffic_mot").is_dir(), "Mount/clone this repository first"
 sys.path.insert(0, str(PROJECT_ROOT / "src"))
 from traffic_mot.utils.kaggle import (prepare_detection_config, check_video_dataset,
                                      check_mot_dataset, run_detection, run_stage)
+''')
+    prepare_mot = code('''# VisDrone MOT uses image sequences; do not convert them into a fake-FPS MP4.
+# Create from ZIPs or extracted directories; val is tuning, test-dev is held out.
+from traffic_mot.utils.mot_data import prepare_mot_manifest
+if not MOT_MANIFEST.exists():
+    prepare_mot_manifest(MOT_MANIFEST, root=MOT_DATA_ROOT)
+print("MOT_MANIFEST:", MOT_MANIFEST)
+# Preparation lists frame/GT members without parsing held-out test annotations.
+# This does not implement the missing tracker/evaluator/ablation CLI.
 ''')
     preflight = code('''config_path, preflight_report = prepare_detection_config(
     PROJECT_ROOT, BUNDLE_DIR, UPSTREAM_REPO, OUTPUT_ROOT / "configs",
@@ -111,7 +121,8 @@ assert FROZEN_CONFIG.is_file(), "Finish validation ablations and freeze the sele
         notebook = {"nbformat": 4, "nbformat_minor": 5, "metadata": {
             "kernelspec": {"display_name": "Python 3", "language": "python", "name": "python3"},
             "language_info": {"name": "python"}, "implementation_status": status},
-            "cells": [markdown(f"# {title}\n\n{status}\n"), install, setup, preflight, *cells,
+            "cells": [markdown(f"# {title}\n\n{status}\n"), install, setup,
+                      *([prepare_mot] if not name.startswith("01_") else []), preflight, *cells,
                       markdown("## Acceptance evidence\n\nRetain manifest, resolved config, source/checkpoint/data hashes, exact environment, raw predictions and decoded video verification. Only real runs on the declared split may populate metric tables. Missing assets/data/GPU are blockers, not zero scores.\n")]}
         for index, cell in enumerate(notebook["cells"]): cell["id"] = f"cell-{index:02d}"
         (output / name).write_text(json.dumps(notebook, ensure_ascii=False, indent=1) + "\n", encoding="utf-8")

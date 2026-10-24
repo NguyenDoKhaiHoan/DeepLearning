@@ -42,22 +42,49 @@ Checkpoint và video không nằm trong Git; gắn chúng riêng bằng Add Inpu
    để xử lý đầy đủ. Lưu artifact Kaggle để nghiệm thu GPU. Không lấy smoke startup
    time làm steady-state FPS, không tính HOTA trên video không GT.
 
-## MOT split manifest cho notebook02–04
+## Chuẩn bị VisDrone MOT thật và manifest cho notebook02–04
 
-Đây là ví dụ **định dạng**, chưa phải dữ liệu có sẵn:
+Hai ZIP đã được kiểm tra local ngày24/10/2026:
 
-```json
-{
-  "dataset": "VisDrone-MOT",
-  "validation": [{"name": "seq_val_01", "video": "videos/seq_val_01.mp4", "gt": "annotations/seq_val_01.txt"}],
-  "test": [{"name": "seq_test_01", "video": "videos/seq_test_01.mp4", "gt": "annotations/seq_test_01.txt"}]
-}
+- `VisDrone2019-MOT-val.zip`: 7 sequence, 2846 ảnh, có GT10 cột với Track ID.
+- `VisDrone2019-MOT-test-dev.zip`: 17 sequence, 6635 ảnh, có annotation.
+
+Upload cả hai vào dataset rồi **Create → Add Input**. Dùng `val` để tune/
+validation, giữ `test-dev` cho final evaluation sau khi cấu hình đã freeze.
+Không cần tạo MP4 từ các JPG, không gán FPS giả. Raw GT target ID0 là hợp lệ;
+public tracker output ID dương là contract riêng, không được làm mất GT0.
+
+Trong Kaggle, lấy code mới rồi tạo manifest theo mount path thực tế:
+
+```python
+!git -C /kaggle/working/DeepLearning pull --ff-only
+!python /kaggle/working/DeepLearning/traffic-mot/scripts/prepare_mot_dataset.py --root /kaggle/input/visdrone-mot --output /kaggle/working/mot_split_manifest.json
 ```
 
-Path tương đối tính từ manifest. GT10 cột phải có persistent IDs, frame1-based
-và occlusion/ignore đúng release. Validation/test khác source/camera; không chỉ
-đổi tên/cắt hai đoạn cùng clip. Checker chặn trùng name/path/hash, còn camera/
-source provenance cần dataset audit. Preflight validation không parse test GT.
-Final test chỉ chạy sau selected_config đã freeze.
+Nếu path mount khác, thay `--root` bằng đường dẫn Copy path trong Add Input.
+Script tìm đúng hai release ZIP hoặc thư mục đã giải nén; không tự giải nén/
+chuyển video, đọc index ảnh/annotation và hash nguồn. Nếu cùng lúc có cả ZIP
+và bản giải nén, chọn tường minh `--validation-source <val_zip_or_directory>
+--test-source <test_dev_zip_or_directory>` thay `--root`.
+
+Output là `mot_split_manifest.json` và `mot_split_manifest.preflight.json` cạnh
+nhau. Lệnh mặc định chỉ đọc GT/ảnh đầu mỗi sequence của **validation**, không
+parse annotation test để tune. Không ghi đè manifest/report đã có; dùng path
+mới nếu đổi dataset. Preflight test chỉ dùng ở final gate đã freeze.
+
+Notebook02–04 mới có cell `prepare_mot_manifest` dùng chung source, tạo manifest
+tại `OUTPUT_ROOT / "mot_split_manifest.json"`. Chỉnh `MOT_DATA_ROOT` đúng mount;
+hoặc đặt `MOT_MANIFEST` trỏ vào file đã tạo bằng lệnh trên. File local trỏ `D:/`
+không dùng nguyên trên Kaggle: cần tạo lại theo mount `/kaggle/input/`.
+
+Manifest hỗ trợ `source_kind=images_zip` với archive/member paths hoặc
+`images_dir` với frames_dir/gt. Giữ thứ tự ảnh1-based và raw IDs; checker không
+chấp nhận trùng sequence/source UAV giữa validation và test. Fingerprint index
+ZIP dựa filename/size/CRC; hash archive giữ integrity. Đối với images_dir, checker
+hash ảnh thật; chưa làm perceptual duplicate detection hoặc kiểm tra tất cả ảnh
+decode được. Chỉ khi có evaluator chuẩn mới báo HOTA/IDF1/MOTA/IDSW.
+
+**Có manifest không đồng nghĩa notebook02–04 chạy tracking được:** các runner
+ByteTrack/BoT-SORT/evaluation/OAR/final còn thiếu và notebook vẫn dừng ở guard.
 
 Tạo lại notebook: `python traffic-mot/scripts/build_kaggle_notebooks.py`.

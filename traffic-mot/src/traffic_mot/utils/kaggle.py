@@ -2,9 +2,7 @@
 from __future__ import annotations
 
 import copy
-import csv
 import json
-import math
 from pathlib import Path
 import subprocess
 import sys
@@ -58,8 +56,8 @@ def check_video_dataset(path: Path) -> dict:
 def check_mot_dataset(manifest_path: Path, *, split: str = "validation") -> dict:
     """Sanity-check real tracking annotation and disjoint splits, not MOT scoring.
 
-    Manifest declares validation/test sequence lists with name/video/gt paths.
-    Paths resolve relative to the manifest. Reject DET rows and identity-less GT.
+    Supports native image sequences (ZIP or directory) and older video entries.
+    Paths resolve relative to the manifest. Raw VisDrone GT ID 0 is valid.
     Full ignore policy/class conversion remains a Stage 3 evaluation task.
     """
     require(split in {"validation", "test"}, "Use an explicit validation or test split")
@@ -67,6 +65,14 @@ def check_mot_dataset(manifest_path: Path, *, split: str = "validation") -> dict
     require(manifest.get("dataset") == "VisDrone-MOT", "Declare a real VisDrone-MOT dataset")
     require(bool(manifest.get("validation")) and bool(manifest.get("test")), "Provide disjoint validation and test sequences")
     base = manifest_path.resolve().parent
+    from traffic_mot.utils.mot_data import check_native_manifest, validate_gt
+    all_sequences = manifest["validation"] + manifest["test"]
+    if any(sequence.get("source_kind") in {"images_zip", "images_dir"} for sequence in all_sequences):
+        require(all(sequence.get("source_kind") in {"images_zip", "images_dir"} for sequence in all_sequences),
+                "Do not mix native image sequences and legacy video entries in one manifest")
+        report = check_native_manifest(manifest, base, split)
+        report["manifest_sha256"] = file_sha256(manifest_path)
+        return report
     names, videos, hashes = set(), set(), set()
     selected = []
     for group in ("validation", "test"):
@@ -80,24 +86,9 @@ def check_mot_dataset(manifest_path: Path, *, split: str = "validation") -> dict
             names.add(name); videos.add(video); hashes.add(video_hash)
             if group != split: continue  # Do not inspect held-out annotations during tuning.
             video_info = check_video_dataset(video)
-            identities: dict[int, set[int]] = {}
-            seen = set()
-            with gt.open(encoding="utf-8-sig", newline="") as stream:
-                for row in csv.reader(stream):
-                    if not row: continue
-                    require(len(row) == 10, "Expected 10-column MOT annotation, not VisDrone DET")
-                    values = [float(value) for value in row]
-                    require(all(math.isfinite(value) for value in values), "Nonfinite annotation value")
-                    frame, target = int(values[0]), int(values[1])
-                    require(values[0] == frame and values[1] == target and frame >= 1, "Invalid GT frame/identity")
-                    require(video_info["frame_count"] is None or frame <= video_info["frame_count"], "GT frame exceeds video length")
-                    if values[6] == 0 or values[7] in {0, 11}: continue
-                    require(target >= 1 and values[4] > 0 and values[5] > 0, "Valid MOT GT needs positive persistent ID and box")
-                    require((frame, target) not in seen, "Duplicate frame/identity in MOT GT")
-                    seen.add((frame, target)); identities.setdefault(target, set()).add(frame)
-            require(any(len(frames) >= 2 for frames in identities.values()), "No persistent identity over time in selected GT")
+            stats = validate_gt(gt.read_text(encoding="utf-8-sig"), video_info["frame_count"])
             selected.append({"name": name, "video": str(video), "gt": str(gt), "video_info": video_info,
-                             "gt_sha256": file_sha256(gt), "video_sha256": video_hash, "gt_observations": len(seen)})
+                             "gt_sha256": file_sha256(gt), "video_sha256": video_hash, **stats})
     return {"dataset": "VisDrone-MOT", "split": split, "sequences": selected,
             "manifest_sha256": file_sha256(manifest_path), "full_evaluator_validation": False}
 

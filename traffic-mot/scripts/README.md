@@ -9,6 +9,7 @@ real detector không fallback mock.
 | run_video.py | detection MP4/webcam/RTSP → annotated MP4/JSONL/manifest; chưa tracking |
 | verify_detection_run.py | đọc lại toàn bộ JSONL/video, kiểm tra count/class/confidence/box, lưu verification.json |
 | build_kaggle_notebooks.py | tạo lại 4 notebook thin wrappers, không chạy hoặc tạo metric |
+| prepare_mot_dataset.py | tạo manifest native JPG sequences từ val/test-dev ZIP hoặc directory; preflight selected GT |
 
 ```powershell
 python traffic-mot/scripts/run_video.py --help

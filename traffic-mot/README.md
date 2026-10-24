@@ -87,6 +87,12 @@ guard vì backend/runner chưa có. Không có notebook nào được tuyên b�
 Kaggle trong session hiện tại. Thiếu MOT dataset/GT thì HOTA/IDF1/MOTA/IDSW là N/A.
 Chỉ tune validation; test giữ cho đánh giá cấu hình đã freeze.
 
+Ngày24/10 đã kiểm tra MOT val/test-dev ZIP thật và bổ sung
+`scripts/prepare_mot_dataset.py` tạo manifest trực tiếp từ native JPG sequences
+(ZIP hoặc thư mục), không chuyển thành MP4 giả FPS. Xem
+[MOT data preflight report](docs/MOT_DATA_PREPARATION_REPORT.md). Đây mới là chuẩn
+bị dữ liệu; notebook02–04 vẫn thiếu tracker/evaluator/OAR runner.
+
 ## Tài liệu thiết kế
 
 - [ARCHITECTURE](docs/ARCHITECTURE.md): detector/tracker bridge và OAR.
